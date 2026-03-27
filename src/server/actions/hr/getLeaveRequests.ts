@@ -80,11 +80,12 @@ export async function getLeaveRequests(
     })
 
     // Look up approver names in bulk
+    type LeaveRequestWithIncludes = (typeof leaveRequests)[number]
     const approverUserIds = [
         ...new Set(
             leaveRequests
-                .filter((r) => r.approverUserId)
-                .map((r) => r.approverUserId as string),
+                .filter((r: LeaveRequestWithIncludes) => r.approverUserId)
+                .map((r: LeaveRequestWithIncludes) => r.approverUserId as string),
         ),
     ]
     const approvers = approverUserIds.length > 0
@@ -103,7 +104,7 @@ export async function getLeaveRequests(
         cancelled: 0,
     }
 
-    const requests: LeaveRequestRow[] = leaveRequests.map((r) => {
+    const requests: LeaveRequestRow[] = leaveRequests.map((r: LeaveRequestWithIncludes) => {
         const displayStatus = STATUS_MAP[r.status] ?? 'Pending'
 
         summary.total += 1
