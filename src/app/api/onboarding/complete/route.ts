@@ -79,8 +79,26 @@ export async function POST(request: Request) {
                 },
             })
 
-            // 2. orgAdmin role
-            console.log('[api/onboarding/complete] step 2: role')
+            // 2. Sync platform User record (Membership FK requires it)
+            console.log('[api/onboarding/complete] step 2: sync platform user')
+            await tx.user.upsert({
+                where: { id: userId },
+                update: {
+                    email: email || session?.user?.email || '',
+                    displayName: `${firstName.trim()} ${lastName.trim()}`,
+                    status: 'ACTIVE',
+                },
+                create: {
+                    id: userId,
+                    email: email || session?.user?.email || '',
+                    displayName: `${firstName.trim()} ${lastName.trim()}`,
+                    status: 'ACTIVE',
+                    authProvider: 'better-auth',
+                },
+            })
+
+            // 3. orgAdmin role
+            console.log('[api/onboarding/complete] step 3: role')
             const role = await tx.role.create({
                 data: {
                     orgId: organization.id,
@@ -97,8 +115,8 @@ export async function POST(request: Request) {
                 },
             })
 
-            // 3. Membership
-            console.log('[api/onboarding/complete] step 3: membership')
+            // 4. Membership
+            console.log('[api/onboarding/complete] step 4: membership')
             await tx.membership.create({
                 data: {
                     orgId: organization.id,
@@ -112,8 +130,8 @@ export async function POST(request: Request) {
                 },
             })
 
-            // 4. EmployeeProfile
-            console.log('[api/onboarding/complete] step 4: profile')
+            // 5. EmployeeProfile
+            console.log('[api/onboarding/complete] step 5: profile')
             await tx.employeeProfile.create({
                 data: {
                     id: randomUUID(),
@@ -128,8 +146,8 @@ export async function POST(request: Request) {
                 },
             })
 
-            // 5. Default leave policies
-            console.log('[api/onboarding/complete] step 5: leave policies')
+            // 6. Default leave policies
+            console.log('[api/onboarding/complete] step 6: leave policies')
             for (const policy of DEFAULT_LEAVE_POLICIES) {
                 await tx.leavePolicy.create({
                     data: {
@@ -144,8 +162,8 @@ export async function POST(request: Request) {
                 })
             }
 
-            // 6. Better Auth org
-            console.log('[api/onboarding/complete] step 6: auth org')
+            // 7. Better Auth org
+            console.log('[api/onboarding/complete] step 7: auth org')
             await tx.authOrganization.create({
                 data: {
                     id: organization.id,
@@ -155,8 +173,8 @@ export async function POST(request: Request) {
                 },
             })
 
-            // 7. Better Auth org member
-            console.log('[api/onboarding/complete] step 7: auth org member')
+            // 8. Better Auth org member
+            console.log('[api/onboarding/complete] step 8: auth org member')
             await tx.authOrgMember.create({
                 data: {
                     id: randomUUID(),
