@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import PostLoginLayout from '@/components/layouts/PostLoginLayout'
 import { auth } from '@/auth'
 import { prisma } from '@/server/lib/prisma'
@@ -16,12 +15,8 @@ const Layout = async ({ children }: { children: ReactNode }) => {
             select: { orgId: true },
         })
 
-        // Get the current path from headers
-        const headerStore = await headers()
-        const pathname = headerStore.get('x-next-pathname') ?? headerStore.get('next-url') ?? ''
-
-        // If no org and not already on onboarding, redirect to onboarding
-        if (!membership && !pathname.includes('/onboarding')) {
+        // No org → send to onboarding (which lives outside this layout group)
+        if (!membership) {
             redirect('/onboarding')
         }
     }
