@@ -28,11 +28,13 @@ const DEFAULT_LEAVE_POLICIES = [
 ]
 
 function slugify(name: string): string {
-    return name
+    const base = name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
-        .slice(0, 60)
+        .slice(0, 55)
+    const suffix = randomUUID().replace(/-/g, '').slice(0, 4)
+    return `${base}-${suffix}`
 }
 
 export async function completeOnboarding(
