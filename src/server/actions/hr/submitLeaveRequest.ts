@@ -124,16 +124,14 @@ export async function submitLeaveRequest(
     const workingDays = countWorkingDays(start, end)
     const hours = resolveHours(durationType, workingDays, customHours)
 
-    // Build duration metadata
-    const metadata: Record<string, unknown> = { durationType }
+    // Build duration metadata as a plain JSON-serialisable object
+    const metadata: Record<string, string | number | boolean> = { durationType }
     if (durationType === 'half_day' && halfDayPortion) {
         metadata.halfDayPortion = halfDayPortion
     }
     if (durationType === 'hourly') {
-        metadata.customHours = customHours
-        if (startTime) {
-            metadata.startTime = startTime
-        }
+        if (customHours) metadata.customHours = customHours
+        if (startTime) metadata.startTime = startTime
     }
 
     const leaveRequest = await prisma.leaveRequest.create({
@@ -150,7 +148,7 @@ export async function submitLeaveRequest(
             submittedAt: new Date(),
             dataClassification: 'OFFICIAL',
             residencyTag: 'UK_ONLY',
-            metadata,
+            metadata: metadata as object,
         },
     })
 

@@ -86,7 +86,7 @@ export async function getLeaveRequests(
     const approverUserIds: string[] = leaveRequests
         .map((r: LeaveRequestWithIncludes) => r.approverUserId)
         .filter((id: string | null): id is string => id != null)
-    const uniqueApproverIds = [...new Set(approverUserIds)]
+    const uniqueApproverIds: string[] = Array.from(new Set(approverUserIds))
 
     const approvers = uniqueApproverIds.length > 0
         ? await prisma.authUser.findMany({
@@ -94,8 +94,8 @@ export async function getLeaveRequests(
             select: { id: true, name: true },
         })
         : []
-    const approverNameMap = new Map(
-        approvers.map((a: { id: string; name: string | null }) => [a.id, a.name ?? 'Manager']),
+    const approverNameMap = new Map<string, string>(
+        approvers.map((a: { id: string; name: string | null }): [string, string] => [a.id, a.name ?? 'Manager']),
     )
 
     const summary: LeaveRequestSummary = {

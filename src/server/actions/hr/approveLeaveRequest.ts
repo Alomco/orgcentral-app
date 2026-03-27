@@ -69,10 +69,8 @@ export async function approveLeaveRequest(
 
     // Build the update
     const now = new Date()
-    const existingMetadata =
-        typeof request.metadata === 'object' && request.metadata !== null
-            ? (request.metadata as Record<string, unknown>)
-            : {}
+    const existing = request.metadata as Record<string, string | number | boolean> | null
+    const base = existing ?? {}
 
     if (action === 'approve') {
         await prisma.leaveRequest.update({
@@ -83,10 +81,10 @@ export async function approveLeaveRequest(
                 approverUserId: approverId,
                 decidedAt: now,
                 metadata: {
-                    ...existingMetadata,
+                    ...base,
                     decidedBy: approverId,
                     decision: 'approved',
-                },
+                } as object,
             },
         })
     } else {
@@ -98,11 +96,11 @@ export async function approveLeaveRequest(
                 approverUserId: approverId,
                 decidedAt: now,
                 metadata: {
-                    ...existingMetadata,
+                    ...base,
                     decidedBy: approverId,
                     decision: 'declined',
                     ...(note?.trim() ? { declineNote: note.trim() } : {}),
-                },
+                } as object,
             },
         })
     }
