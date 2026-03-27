@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/server/lib/prisma'
+import { completeOnboarding } from '@/server/actions/onboarding/completeOnboarding'
+import type { CompleteOnboardingInput, CompleteOnboardingResult } from '@/server/actions/onboarding/completeOnboarding'
 import OnboardingWizard from './_components/OnboardingWizard'
 
 export default async function OnboardingPage() {
@@ -31,12 +33,21 @@ export default async function OnboardingPage() {
     const defaultFirstName = nameParts[0] ?? ''
     const defaultLastName = nameParts.slice(1).join(' ')
 
+    // Bind the server action so it can be passed to the client component
+    async function handleCompleteOnboarding(
+        input: CompleteOnboardingInput,
+    ): Promise<CompleteOnboardingResult> {
+        'use server'
+        return completeOnboarding(input)
+    }
+
     return (
         <OnboardingWizard
             userId={userId}
             email={authUser?.email ?? ''}
             defaultFirstName={defaultFirstName}
             defaultLastName={defaultLastName}
+            onComplete={handleCompleteOnboarding}
         />
     )
 }

@@ -2,13 +2,14 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { completeOnboarding } from '@/server/actions/onboarding/completeOnboarding'
+import type { CompleteOnboardingInput, CompleteOnboardingResult } from '@/server/actions/onboarding/completeOnboarding'
 
 interface OnboardingWizardProps {
     userId: string
     email: string
     defaultFirstName: string
     defaultLastName: string
+    onComplete: (input: CompleteOnboardingInput) => Promise<CompleteOnboardingResult>
 }
 
 const SECTORS = [
@@ -28,6 +29,7 @@ export default function OnboardingWizard({
     email,
     defaultFirstName,
     defaultLastName,
+    onComplete,
 }: OnboardingWizardProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
@@ -50,7 +52,7 @@ export default function OnboardingWizard({
     const handleFinish = () => {
         setError(null)
         startTransition(async () => {
-            const result = await completeOnboarding({
+            const result = await onComplete({
                 userId,
                 email,
                 firstName: firstName.trim(),
