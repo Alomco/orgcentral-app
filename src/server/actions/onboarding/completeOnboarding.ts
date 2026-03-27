@@ -46,7 +46,7 @@ export async function completeOnboarding(
         return { success: false, error: 'Please fill in all required fields.' }
     }
 
-    // Check if user already has an org (idempotency guard)
+    // Idempotency guard — if user already has an org, skip
     const existingMembership = await prisma.membership.findFirst({
         where: { userId, status: 'ACTIVE' },
         select: { orgId: true },
@@ -57,111 +57,117 @@ export async function completeOnboarding(
 
     const orgId = randomUUID()
     const slug = slugify(orgName) || `org-${orgId.slice(0, 8)}`
+    const now = new Date()
 
     try {
-        // 1. Create the Organisation
-        const organization = await prisma.organization.create({
-            data: {
-                id: orgId,
-                slug,
-                name: orgName.trim(),
-                tenantId: orgId,
-                regionCode: 'UK-LON',
-                status: 'ACTIVE',
-                complianceTier: 'STANDARD',
-                dataResidency: 'UK_ONLY',
-                dataClassification: 'OFFICIAL',
-                industry: sector,
-                employeeCountRange: orgSize || null,
-            },
-        })
+        // All 7 steps in a single transaction — if any fails, everything rolls back
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create the Organisation
+            const organization = await tx.organization.create({
+                data: {
+                    id: orgId,
+                    slug,
+                    name: orgName.trim(),
+                    tenantId: orgId,
+                    regionCode: 'UK-LON',
+                    status: 'ACTIVE',
+                    complianceTier: 'STANDARD',
+                    dataResidency: 'UK_ONLY',
+                    dataClassification: 'OFFICIAL',
+                    industry: sector,
+                    employeeCountRange: orgSize || null,
+                },
+            })
 
-        // 2. Create the orgAdmin role
-        const role = await prisma.role.create({
-            data: {
-                orgId: organization.id,
-                name: 'orgAdmin',
-                description: 'Organisation administrator with full access',
-                scope: 'ORG',
-                permissions: {
-                    hr: { read: true, write: true, approve: true },
-                    org: { read: true, write: true, manage: true },
-                    members: { read: true, invite: true, manage: true },
-                } as object,
-                isSystem: true,
-                isDefault: true,
-            },
-        })
+            // 2. Create the orgAdmin role
+            const role = await tx.role.create({
+                data: {
+                    orgId: organization.id,
+                    name: 'orgAdmin',
+                    description: 'Organisation administrator with full access',
+                    scope: 'ORG',
+                    permissions: {
+                        hr: { read: true, write: true, approve: true },
+                        org: { read: true, write: true, manage: true },
+                        members: { read: true, invite: true, manage: true },
+                    } as object,
+                    isSystem: true,
+                    isDefault: true,
+                },
+            })
 
-        // 3. Create the Membership
-        const now = new Date()
-        await prisma.membership.create({
-            data: {
-                orgId: organization.id,
-                userId,
-                roleId: role.id,
-                status: 'ACTIVE',
-                invitedBy: null,
-                invitedAt: now,
-                activatedAt: now,
-                createdBy: userId,
-            },
-        })
+            // 3. Create the Membership
+            await tx.membership.create({
+                data: {
+                    orgId: organization.id,
+                    userId,
+                    roleId: role.id,
+                    status: 'ACTIVE',
+                    invitedBy: null,
+                    invitedAt: now,
+                    activatedAt: now,
+                    createdBy: userId,
+                },
+            })
 
-        // 4. Create the EmployeeProfile
-        await prisma.employeeProfile.create({
-            data: {
-                id: randomUUID(),
-                orgId: organization.id,
-                userId,
-                email,
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                displayName: `${firstName.trim()} ${lastName.trim()}`,
-                jobTitle: jobTitle?.trim() || null,
-                employeeNumber: 'EMP-001',
-            },
-        })
-
-        // 5. Seed default leave policies
-        for (const policy of DEFAULT_LEAVE_POLICIES) {
-            await prisma.leavePolicy.create({
+            // 4. Create the EmployeeProfile
+            await tx.employeeProfile.create({
                 data: {
                     id: randomUUID(),
                     orgId: organization.id,
-                    name: policy.name,
-                    policyType: policy.policyType,
-                    requiresApproval: true,
-                    isDefault: policy.policyType === 'ANNUAL',
-                    activeFrom: new Date('2026-01-01'),
+                    userId,
+                    email,
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    displayName: `${firstName.trim()} ${lastName.trim()}`,
+                    jobTitle: jobTitle?.trim() || null,
+                    employeeNumber: 'EMP-001',
                 },
             })
-        }
 
-        // 6. Sync Better Auth org tables
-        await prisma.authOrganization.create({
-            data: {
-                id: organization.id,
-                slug,
-                name: orgName.trim(),
-                metadata: JSON.stringify({
-                    source: 'onboarding',
-                    sector,
-                    orgSize,
-                }),
-            },
+            // 5. Seed default leave policies
+            for (const policy of DEFAULT_LEAVE_POLICIES) {
+                await tx.leavePolicy.create({
+                    data: {
+                        id: randomUUID(),
+                        orgId: organization.id,
+                        name: policy.name,
+                        policyType: policy.policyType,
+                        requiresApproval: true,
+                        isDefault: policy.policyType === 'ANNUAL',
+                        activeFrom: new Date('2026-01-01'),
+                    },
+                })
+            }
+
+            // 6. Sync Better Auth org tables
+            await tx.authOrganization.create({
+                data: {
+                    id: organization.id,
+                    slug,
+                    name: orgName.trim(),
+                    metadata: JSON.stringify({
+                        source: 'onboarding',
+                        sector,
+                        orgSize,
+                    }),
+                },
+            })
+
+            // 7. Sync Better Auth org membership
+            await tx.authOrgMember.create({
+                data: {
+                    id: randomUUID(),
+                    organizationId: organization.id,
+                    userId,
+                    role: 'orgAdmin',
+                },
+            })
+
+            return organization.id
         })
 
-        await prisma.authOrgMember.create({
-            data: {
-                id: randomUUID(),
-                organizationId: organization.id,
-                userId,
-                role: 'orgAdmin',
-            },
-        })
-
-        return { success: true, orgId: organization.id }
+        return { success: true, orgId: result }
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)
 
