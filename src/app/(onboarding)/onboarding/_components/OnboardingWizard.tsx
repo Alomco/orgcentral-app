@@ -1,15 +1,13 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { CompleteOnboardingInput, CompleteOnboardingResult } from '@/server/actions/onboarding/completeOnboarding'
 
 interface OnboardingWizardProps {
     userId: string
     email: string
     defaultFirstName: string
     defaultLastName: string
-    onComplete: (input: CompleteOnboardingInput) => Promise<CompleteOnboardingResult>
 }
 
 const SECTORS = [
@@ -29,10 +27,9 @@ export default function OnboardingWizard({
     email,
     defaultFirstName,
     defaultLastName,
-    onComplete,
 }: OnboardingWizardProps) {
     const router = useRouter()
-    const [isPending, startTransition] = useTransition()
+    const [isPending, setIsPending] = useState(false)
     const [step, setStep] = useState(1)
     const [error, setError] = useState<string | null>(null)
 
@@ -49,19 +46,26 @@ export default function OnboardingWizard({
     const canProceedStep1 = firstName.trim() && lastName.trim()
     const canProceedStep2 = orgName.trim() && sector
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
         setError(null)
-        startTransition(async () => {
-            const result = await onComplete({
-                userId,
-                email,
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                jobTitle: jobTitle.trim() || undefined,
-                orgName: orgName.trim(),
-                sector,
-                orgSize,
+        setIsPending(true)
+
+        try {
+            const response = await fetch('/api/onboarding/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    jobTitle: jobTitle.trim() || undefined,
+                    orgName: orgName.trim(),
+                    sector,
+                    orgSize,
+                }),
             })
+
+            const result = await response.json()
 
             if (!result.success) {
                 setError(result.error ?? 'Something went wrong. Please try again.')
@@ -69,7 +73,11 @@ export default function OnboardingWizard({
             }
 
             router.push('/hr/leave/requests')
-        })
+        } catch {
+            setError('Something went wrong. Please check your connection and try again.')
+        } finally {
+            setIsPending(false)
+        }
     }
 
     const inputClass =

@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 
 const pageMeta: Metadata = {
-    title: 'Ecme - The Ultimate Next & TypeScript Web Template',
+    title: 'OrgCentral — Management made simple',
     description:
-        'Admin Template and Starter Kit with React, Tailwind Components and Next.js',
+        'A friendly management platform for public sector organisations. Manage time off, approvals, and your team in one place.',
     icons: {
         icon: '/favicon.ico',
     },
