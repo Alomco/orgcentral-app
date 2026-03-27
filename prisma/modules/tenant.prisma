@@ -1,0 +1,368 @@
+// Tenant domain models with UK government compliance
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  DECOMMISSIONED
+  @@schema("hr")
+}
+enum ComplianceTier {
+  STANDARD
+  REGULATED
+  GOV_SECURE
+  @@schema("hr")
+}
+enum DataResidencyZone {
+  UK_ONLY
+  UK_AND_EEA
+  GLOBAL_RESTRICTED
+  @@schema("hr")
+}
+enum DataClassificationLevel {
+  OFFICIAL
+  OFFICIAL_SENSITIVE
+  SECRET
+  TOP_SECRET
+  @@schema("hr")
+}
+enum RoleScope {
+  ORG
+  DEPARTMENT
+  GLOBAL
+  @@schema("hr")
+}
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+  @@schema("hr")
+}
+enum RoleChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELED
+  EXPIRED
+  @@schema("hr")
+}
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  SMS
+  @@schema("hr")
+}
+model Organization {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  slug                 String                  @unique @db.Citext
+  name                 String
+  status               OrganizationStatus      @default(ACTIVE)
+  complianceTier       ComplianceTier          @default(STANDARD)
+  dataResidency        DataResidencyZone       @default(UK_ONLY)
+  dataClassification   DataClassificationLevel @default(OFFICIAL)
+  regionCode           String
+
+  // Organization profile + legacy fields (migrated from the old Firebase shape)
+  address               String?
+  phone                 String?
+  website               String?
+  companyType           String?
+  industry              String?
+  employeeCountRange    String?
+  incorporationDate     DateTime?
+  registeredOfficeAddress String?
+  contactDetails        Json?                   @db.JsonB
+
+  // Leave settings legacy columns
+  primaryLeaveType      String?
+  leaveYearStartDate    DateTime?
+
+  // Admin + subscription legacy fields
+  ownerUid              String?                 @db.Uuid
+  ownerEmail            String?                 @db.Citext
+  ownerName             String?
+  subscriptionPlan      String?
+  subscriptionStatus    String?
+  userCount             Int?
+  availablePermissions  Json?                   @db.JsonB
+
+  settings             Json                    @default("{}") @db.JsonB
+  governanceTags       Json?                   @db.JsonB
+  securityControls     Json?                   @db.JsonB // Security configuration per UK standards
+  encryptionKey        String?                 @db.Text // For field-level encryption
+  tenantId             String                  // For multi-tenancy isolation
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  locations             Location[]
+  memberships             Membership[]
+  roles                   Role[]
+  departments             Department[]
+  leavePolicies           LeavePolicy[]
+  documents               DocumentVault[]
+  auditLogs               AuditLog[]
+  notificationPreferences NotificationPreference[]
+  integrations            IntegrationConfig[]
+  outboxEvents            EventOutbox[]
+  invitations             Invitation[]
+  securityEvents          SecurityEvent[]
+  tenantSecurityEvents    TenantSecurityEvent[] @relation("TenantSecurityEventOrganization")
+  globalSecurityEvents    GlobalSecurityEvent[] @relation("GlobalSecurityEventSourceOrg")
+  complianceRecords      ComplianceRecord[]
+  statutoryReports       StatutoryReport[]
+  dataSubjectRights      DataSubjectRight[]
+  absenceTypes           AbsenceTypeConfig[]
+  absenceSettings        AbsenceSettings?
+  unplannedAbsences      UnplannedAbsence[]
+  timeEntries            TimeEntry[]
+  hrPolicies             HRPolicy[]
+  hrNotifications        HRNotification[]
+  notificationMessages   NotificationMessage[] @relation("OrgNotificationMessages")
+  permissionResources    PermissionResource[]
+  hrSettings             HRSettings?
+  checklistTemplates     ChecklistTemplate[] @relation("OrgChecklistTemplates")
+  checklistInstances     ChecklistInstance[] @relation("OrgChecklistInstances")
+  offboardingRecords     Offboarding[]
+  mentorAssignments      MentorAssignment[]
+  provisioningTasks      ProvisioningTask[]
+  onboardingWorkflowTemplates OnboardingWorkflowTemplate[]
+  onboardingWorkflowRuns OnboardingWorkflowRun[]
+  emailSequenceTemplates EmailSequenceTemplate[]
+  emailSequenceEnrollments EmailSequenceEnrollment[]
+  emailSequenceDeliveries EmailSequenceDelivery[]
+  onboardingMetricDefinitions OnboardingMetricDefinition[]
+  onboardingMetricResults OnboardingMetricResult[]
+  onboardingFeedback     OnboardingFeedback[]
+  documentTemplates      DocumentTemplate[]
+  documentTemplateAssignments DocumentTemplateAssignment[]
+  complianceTemplates    ComplianceTemplate[] @relation("OrgComplianceTemplates")
+  complianceReminderSettings ComplianceReminderSettings?
+  complianceCategories   ComplianceCategory[] @relation("OrgComplianceCategories")
+  complianceLogItems     ComplianceLogItem[] @relation("OrgComplianceLogItems")
+  managedOrganizations   ManagedOrganization[] @relation("ManagedOrgOrganization")
+  roleChangeRequests     RoleChangeRequest[]
+  subscriptions          OrganizationSubscription[]
+  paymentMethods         PaymentMethod[]
+  billingInvoices        BillingInvoice[]
+  presetSource           OrganizationPresetSource?
+  presetOverrides        OrganizationPresetOverride[]
+  presetUpgradeSuggestions OrganizationPresetUpgradeSuggestion[]
+  @@index([tenantId]) // For tenant isolation
+  @@map("organizations") // PostgreSQL schema mapping
+  @@schema("hr")
+}
+
+model Location {
+  id        String   @id @db.Uuid
+  orgId     String   @db.Uuid
+  name      String
+  address   String
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("locations")
+  @@schema("hr")
+}
+model User {
+  id               String           @id @default(uuid()) @db.Uuid
+  email            String           @unique @db.Citext
+  displayName      String?
+  status           MembershipStatus @default(INVITED)
+  authProvider     String           @default("better-auth")
+  lastLoginAt      DateTime?
+  failedLoginCount Int              @default(0) // For security monitoring
+  lockedUntil      DateTime?        // Account lockout for security
+  lastPasswordChange DateTime       @default(now()) // For password policy compliance
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  memberships         Membership[]
+  invitationsSent     Invitation[] @relation("InvitationInvitedBy")
+  invitationsAccepted Invitation[] @relation("InvitationAcceptedBy")
+  invitationsRevoked  Invitation[] @relation("InvitationRevokedBy")
+  securityEvents      SecurityEvent[]
+  resolvedSecurityEvents SecurityEvent[] @relation("SecurityEventResolver")
+  tenantSecurityEvents TenantSecurityEvent[] @relation("TenantSecurityEventUser")
+  resolvedTenantSecurityEvents TenantSecurityEvent[] @relation("TenantSecurityEventResolver")
+  globalSecurityEvents GlobalSecurityEvent[] @relation("GlobalSecurityEventUser")
+  resolvedGlobalSecurityEvents GlobalSecurityEvent[] @relation("GlobalSecurityEventResolver")
+  sessions            UserSession[]
+  // submitter relationships are modelled as Membership -> ComplianceRecord/StatutoryReport
+  dsrRequests          DataSubjectRight[] @relation("DSRRequestor")
+  dsrResponses         DataSubjectRight[] @relation("DSRResponder")
+  managedOrganizations ManagedOrganization[] @relation("ManagedAdmin")
+  requestedRoleChanges  RoleChangeRequest[] @relation("RoleChangeRequestRequestedBy")
+  targetRoleChanges     RoleChangeRequest[] @relation("RoleChangeRequestTargetUser")
+  approvedRoleChanges   RoleChangeRequest[] @relation("RoleChangeRequestApprovedBy")
+  rejectedRoleChanges   RoleChangeRequest[] @relation("RoleChangeRequestRejectedBy")
+  @@index([email])
+  @@schema("hr")
+}
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @db.Uuid
+  name        String
+  description String?
+  scope       RoleScope @default(ORG)
+  permissions Json      @default("{}") @db.JsonB
+  inheritsRoleIds String[] @default([]) @db.Text
+  isSystem    Boolean   @default(false)
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  @@unique([orgId, name])
+  @@map("roles")
+  @@schema("hr")
+}
+model PermissionResource {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  resource    String
+  actions     String[] @db.Text
+  description String?
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, resource])
+  @@index([orgId])
+  @@map("permission_resources")
+  @@schema("hr")
+}
+model Department {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @db.Uuid
+  name         String
+  path         String?  // For hierarchical department structures
+  leaderOrgId  String?  @db.Uuid
+  leaderUserId String?  @db.Uuid
+  businessUnit String?  // For organizational hierarchy
+  costCenter   String?  // For financial tracking
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  org           Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  leader        Membership?   @relation("DepartmentLead", fields: [leaderOrgId, leaderUserId], references: [orgId, userId])
+  memberships   Membership[]
+  leavePolicies LeavePolicy[]
+  employmentContracts EmploymentContract[]
+  employeeProfiles EmployeeProfile[] @relation("DepartmentProfiles")
+  @@unique([orgId, name])
+  @@map("departments")
+  @@schema("hr")
+}
+model Membership {
+  orgId         String           @db.Uuid
+  userId        String           @db.Uuid
+  roleId        String?          @db.Uuid
+  departmentId  String?          @db.Uuid
+  status        MembershipStatus @default(INVITED)
+  invitedBy     String?          @db.Uuid
+  invitedAt     DateTime?
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+  lastAccessedAt DateTime?        // For access compliance tracking
+  metadata      Json?            @db.JsonB
+  // Required for UK compliance audit trails
+  createdBy     String           @db.Uuid
+  updatedBy     String?          @db.Uuid
+  org                     Organization             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                    Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  department              Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  profile                 EmployeeProfile?
+  balances                LeaveBalance[]           @relation("MembershipLeaveBalances")
+  leaveRequests           LeaveRequest[]
+  auditLogs               AuditLog[]
+  ledDepartments          Department[]             @relation("DepartmentLead")
+  leaveApprovals          LeaveRequest[]           @relation("LeaveApprover")
+  documentsOwned          DocumentVault[]          @relation("DocumentOwner")
+  notificationPreferences NotificationPreference[]
+  employmentContracts     EmploymentContract[]
+  reviewsAsReviewee       PerformanceReview[] @relation("RevieweeMembership")
+  reviewsAsReviewer      PerformanceReview[] @relation("ReviewerMembership")
+  trainingRecords        TrainingRecord[]
+  reportedAbsences       UnplannedAbsence[] @relation("MemberAbsences")
+  approvedAbsences       UnplannedAbsence[] @relation("AbsenceApprover")
+  timeEntries            TimeEntry[] @relation("MemberTimeEntries")
+  approvedTimeEntries    TimeEntry[] @relation("TimeEntryApprover")
+  policyAcknowledgments  PolicyAcknowledgment[]
+  notifications          HRNotification[]
+  notificationMessages   NotificationMessage[] @relation("MembershipNotificationMessages")
+  assignedComplianceRecords ComplianceRecord[] @relation("ComplianceAssignee")
+  submittedComplianceRecords  ComplianceRecord[] @relation("ComplianceSubmitter")
+  submittedStatutoryReports   StatutoryReport[]  @relation("ReportSubmitter")
+  complianceLogItems     ComplianceLogItem[] @relation("MembershipComplianceLogItems")
+  mentorAssignments      MentorAssignment[] @relation("MentorAssignmentMentor")
+  provisioningRequests   ProvisioningTask[] @relation("ProvisioningRequester")
+  @@id([orgId, userId])
+  @@index([userId])
+  @@index([orgId, status])
+  @@map("memberships")
+  @@schema("hr")
+}
+
+model RoleChangeRequest {
+  id                String                  @id @default(uuid()) @db.Uuid
+  orgId             String                  @db.Uuid
+  targetUserId      String                  @db.Uuid
+  requestedByUserId String                  @db.Uuid
+  currentRole       String
+  requestedRole     String
+  reason            String?
+  status            RoleChangeRequestStatus @default(PENDING)
+  requestedAt       DateTime                @default(now())
+  processedAt       DateTime?
+  approvedByUserId  String?                 @db.Uuid
+  rejectedByUserId  String?                 @db.Uuid
+  expiresAt         DateTime?
+  metadata          Json?                   @db.JsonB
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  targetUser  User         @relation("RoleChangeRequestTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  requestedBy User         @relation("RoleChangeRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  approvedBy  User?        @relation("RoleChangeRequestApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectedBy  User?        @relation("RoleChangeRequestRejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, status, requestedAt])
+  @@index([orgId, targetUserId, status])
+  @@map("role_change_requests")
+  @@schema("hr")
+}
+model NotificationPreference {
+  id         String              @id @default(uuid()) @db.Uuid
+  orgId      String              @db.Uuid
+  userId     String              @db.Uuid
+  channel    NotificationChannel
+  enabled    Boolean             @default(true)
+  quietHours Json?               @db.JsonB
+  metadata   Json?               @db.JsonB
+  updatedAt  DateTime            @updatedAt
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  membership Membership   @relation(fields: [orgId, userId], references: [orgId, userId], onDelete: Cascade)
+  @@unique([orgId, userId, channel])
+  @@map("notification_preferences")
+  @@schema("hr")
+}
+model IntegrationConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  provider    String
+  credentials Json     @db.JsonB // Encrypted at application layer
+  settings    Json     @db.JsonB
+  active      Boolean  @default(true)
+  compliance  Json?    @db.JsonB // Integration compliance settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@unique([orgId, provider])
+  @@map("integration_configs")
+  @@schema("hr")
+}

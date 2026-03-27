@@ -1,0 +1,88 @@
+// Platform and enterprise admin models extracted for size limits
+
+model PlatformSetting {
+  id        String   @id
+  branding  Json?    @db.JsonB
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+  @@schema("platform")
+}
+
+model AppPermission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  category    String
+  isGlobal    Boolean  @default(false)
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@map("app_permissions")
+  @@schema("platform")
+}
+
+model ManagedOrganization {
+  id           String   @id @default(uuid()) @db.Uuid
+  adminUserId  String   @db.Uuid
+  orgId        String   @db.Uuid
+  orgName      String
+  ownerEmail   String
+  planId       String
+  moduleAccess Json     @db.JsonB
+  metadata     Json?    @db.JsonB
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  admin        User          @relation("ManagedAdmin", fields: [adminUserId], references: [id], onDelete: Cascade)
+  organization Organization @relation("ManagedOrgOrganization", fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([orgId])
+  @@map("managed_organizations")
+  @@schema("org")
+}
+
+model PresetPack {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  versions PresetPackVersion[]
+
+  @@map("preset_packs")
+  @@schema("platform")
+}
+
+model PresetPackVersion {
+  id               String   @id @default(uuid()) @db.Uuid
+  packId           String   @db.Uuid
+  versionNumber    Int
+  status           String   @default("DRAFT")
+  contentJson      Json     @db.JsonB
+  rulesJson        Json     @db.JsonB
+  changelog        String?
+  createdByUserId  String?  @db.Uuid
+  publishedByUserId String? @db.Uuid
+  publishedAt      DateTime?
+  archivedByUserId String?  @db.Uuid
+  archivedAt       DateTime?
+  checksum         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  pack PresetPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@unique([packId, versionNumber])
+  @@index([packId, status])
+  @@map("preset_pack_versions")
+  @@schema("platform")
+}

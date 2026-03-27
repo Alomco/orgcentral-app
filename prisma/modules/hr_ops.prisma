@@ -1,0 +1,842 @@
+// HR operational models: absences, time tracking, policies, settings, compliance
+
+enum AbsenceStatus {
+  REPORTED
+  APPROVED
+  REJECTED
+  CANCELLED
+  CLOSED
+  @@schema("hr")
+}
+
+enum TimeEntryStatus {
+  ACTIVE
+  COMPLETED
+  APPROVED
+  REJECTED
+  @@schema("hr")
+}
+
+enum PolicyCategory {
+  HR_POLICIES
+  CODE_OF_CONDUCT
+  HEALTH_SAFETY
+  IT_SECURITY
+  BENEFITS
+  PROCEDURES
+  COMPLIANCE
+  OTHER
+  @@schema("hr")
+}
+
+enum ChecklistTemplateType {
+  onboarding
+  offboarding
+  custom
+  @@schema("hr")
+}
+
+enum ChecklistInstanceStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  @@schema("hr")
+}
+
+enum OffboardingStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  @@schema("hr")
+}
+
+enum MentorAssignmentStatus {
+  ACTIVE
+  ENDED
+  @@schema("hr")
+}
+
+enum ProvisioningTaskType {
+  ACCOUNT
+  EQUIPMENT
+  ACCESS
+  LICENSE
+  SOFTWARE
+  @@schema("hr")
+}
+
+enum ProvisioningTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  @@schema("hr")
+}
+
+enum WorkflowTemplateType {
+  ONBOARDING
+  OFFBOARDING
+  @@schema("hr")
+}
+
+enum WorkflowRunStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  @@schema("hr")
+}
+
+enum EmailSequenceTrigger {
+  ONBOARDING_INVITE
+  ONBOARDING_ACCEPTED
+  OFFBOARDING_STARTED
+  @@schema("hr")
+}
+
+enum EmailSequenceStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+  @@schema("hr")
+}
+
+enum EmailSequenceDeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+  @@schema("hr")
+}
+
+enum OnboardingMetricSource {
+  SYSTEM
+  SURVEY
+  MANUAL
+  @@schema("hr")
+}
+
+enum DocumentAssignmentStatus {
+  PENDING
+  COMPLETED
+  WAIVED
+  @@schema("hr")
+}
+
+enum ComplianceItemStatus {
+  PENDING
+  COMPLETE
+  MISSING
+  PENDING_REVIEW
+  NOT_APPLICABLE
+  EXPIRED
+  @@schema("hr")
+}
+
+model AbsenceTypeConfig {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @db.Uuid
+  key           String
+  label         String
+  tracksBalance Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  metadata      Json?    @db.JsonB
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  org       Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  absences  UnplannedAbsence[]
+
+  @@unique([orgId, key])
+  @@map("absence_type_configs")
+  @@schema("hr")
+}
+
+model AbsenceSettings {
+  orgId          String   @id @db.Uuid
+  hoursInWorkDay Decimal  @db.Decimal(5, 2) @default(8)
+  roundingRule   String?
+  metadata       Json?    @db.JsonB
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("absence_settings")
+  @@schema("hr")
+}
+
+model HRSettings {
+  orgId             String   @id @db.Uuid
+  leaveTypes        Json?    @db.JsonB // Array of { type, displayName, entitlement, maxCarryOver, requiresApproval, autoApprovalThreshold }
+  workingHours      Json?    @db.JsonB // { standardHoursPerDay, standardDaysPerWeek, overtimeThreshold }
+  approvalWorkflows Json?    @db.JsonB // { leaveRequests: {...}, documents: {...}, policies: {...} }
+  overtimePolicy    Json?    @db.JsonB // { enableOvertime, roundingRule, approvalRequired }
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  metadata          Json?    @db.JsonB
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("hr_settings")
+  @@schema("hr")
+}
+
+model UnplannedAbsence {
+  id             String         @id @default(uuid()) @db.Uuid
+  orgId          String         @db.Uuid
+  userId         String         @db.Uuid
+  typeId         String         @db.Uuid
+  startDate      DateTime
+  endDate        DateTime
+  hours          Decimal        @db.Decimal(6, 2)
+  reason         String?
+  status         AbsenceStatus  @default(REPORTED)
+  healthStatus   HealthStatus?
+  approverOrgId  String?        @db.Uuid
+  approverUserId String?        @db.Uuid
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  metadata       Json?          @db.JsonB
+  deletionReason String?
+  deletedAt      DateTime?
+  deletedByUserId String?       @db.Uuid
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  org      Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  member   Membership        @relation("MemberAbsences", fields: [orgId, userId], references: [orgId, userId], onDelete: Cascade)
+  type     AbsenceTypeConfig @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  approver Membership?       @relation("AbsenceApprover", fields: [approverOrgId, approverUserId], references: [orgId, userId], onDelete: SetNull)
+  attachments   AbsenceAttachment[]
+  returnRecord  AbsenceReturnRecord?
+  deletionAudit AbsenceDeletionAudit?
+
+  @@index([orgId, userId])
+  @@index([orgId, status])
+  @@map("unplanned_absences")
+  @@schema("hr")
+}
+
+model AbsenceAttachment {
+  id               String                 @id @default(uuid()) @db.Uuid
+  orgId            String                 @db.Uuid
+  absenceId        String                 @db.Uuid
+  fileName         String
+  storageKey       String
+  contentType      String
+  fileSize         Int
+  checksum         String?
+  uploadedByUserId String                 @db.Uuid
+  uploadedAt       DateTime               @default(now())
+  metadata         Json?                  @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+
+  absence  UnplannedAbsence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
+  @@index([orgId, absenceId])
+  @@map("unplanned_absence_attachments")
+  @@schema("hr")
+}
+
+model AbsenceReturnRecord {
+  id                String                 @id @default(uuid()) @db.Uuid
+  orgId             String                 @db.Uuid
+  absenceId         String                 @db.Uuid @unique
+  returnDate        DateTime
+  comments          String?
+  submittedByUserId String                 @db.Uuid
+  submittedAt       DateTime               @default(now())
+  metadata          Json?                  @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+
+  absence  UnplannedAbsence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
+  @@index([orgId])
+  @@map("unplanned_absence_returns")
+  @@schema("hr")
+}
+
+model AbsenceDeletionAudit {
+  id               String                 @id @default(uuid()) @db.Uuid
+  orgId            String                 @db.Uuid
+  absenceId        String                 @db.Uuid @unique
+  reason           String
+  deletedByUserId  String                 @db.Uuid
+  deletedAt        DateTime               @default(now())
+  metadata         Json?                  @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+
+  absence   UnplannedAbsence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
+  @@index([orgId])
+  @@map("unplanned_absence_deletions")
+  @@schema("hr")
+}
+
+model TimeEntry {
+  id               String          @id @default(uuid()) @db.Uuid
+  orgId            String          @db.Uuid
+  userId           String          @db.Uuid
+  date             DateTime
+  clockIn          DateTime
+  clockOut         DateTime?
+  totalHours       Decimal?        @db.Decimal(6, 2)
+  breakDuration    Decimal?        @db.Decimal(5, 2)
+  project          String?
+  tasks            Json?           @db.JsonB
+  notes            String?
+  status           TimeEntryStatus @default(ACTIVE)
+  approvedByOrgId  String?         @db.Uuid
+  approvedByUserId String?         @db.Uuid
+  approvedAt       DateTime?
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  metadata         Json?           @db.JsonB
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  org        Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  membership Membership      @relation("MemberTimeEntries", fields: [orgId, userId], references: [orgId, userId], onDelete: Cascade)
+  approver   Membership?     @relation("TimeEntryApprover", fields: [approvedByOrgId, approvedByUserId], references: [orgId, userId], onDelete: SetNull)
+
+  @@index([orgId, userId])
+  @@index([orgId, status])
+  @@map("time_entries")
+  @@schema("hr")
+}
+
+model HRPolicy {
+  id                     String          @id @default(uuid()) @db.Uuid
+  orgId                  String          @db.Uuid
+  title                  String
+  content                String
+  category               PolicyCategory  @default(HR_POLICIES)
+  version                String          @default("v1")
+  effectiveDate          DateTime
+  expiryDate             DateTime?
+  applicableRoles        Json?           @db.JsonB
+  applicableDepartments  Json?           @db.JsonB
+  requiresAcknowledgment Boolean         @default(false)
+  status                 String          @default("draft")
+  dataClassification     DataClassificationLevel @default(OFFICIAL)
+  residencyTag           DataResidencyZone       @default(UK_ONLY)
+  metadata               Json?           @db.JsonB
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  org             Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  acknowledgments PolicyAcknowledgment[]
+
+  @@index([orgId, status])
+  @@map("policies")
+  @@schema("hr")
+}
+
+model PolicyAcknowledgment {
+  id             String   @id @default(uuid()) @db.Uuid
+  orgId          String   @db.Uuid
+  userId         String   @db.Uuid
+  policyId       String   @db.Uuid
+  version        String
+  acknowledgedAt DateTime @default(now())
+  ipAddress      String?
+  metadata       Json?    @db.JsonB
+
+  policy     HRPolicy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  membership Membership  @relation(fields: [orgId, userId], references: [orgId, userId], onDelete: Cascade)
+
+  @@unique([policyId, orgId, userId, version])
+  @@map("policy_acknowledgments")
+  @@schema("hr")
+}
+
+model ChecklistTemplate {
+  id        String                @id @default(uuid()) @db.Uuid
+  orgId     String                @db.Uuid
+  name      String
+  type      ChecklistTemplateType @default(onboarding)
+  items     Json                  @db.JsonB
+  metadata  Json?                 @db.JsonB
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  org Organization @relation("OrgChecklistTemplates", fields: [orgId], references: [id], onDelete: Cascade)
+  instances ChecklistInstance[] @relation("ChecklistTemplateInstances")
+
+  @@index([orgId, type])
+  @@map("checklist_templates")
+  @@schema("hr")
+}
+
+model ChecklistInstance {
+  id           String                   @id @default(uuid()) @db.Uuid
+  orgId        String                   @db.Uuid
+  employeeId   String                   @db.Uuid
+  templateId   String                   @db.Uuid
+  templateName String?
+  status       ChecklistInstanceStatus  @default(IN_PROGRESS)
+  items        Json                     @db.JsonB
+  startedAt    DateTime                 @default(now())
+  completedAt  DateTime?
+  metadata     Json?                    @db.JsonB
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  org        Organization       @relation("OrgChecklistInstances", fields: [orgId], references: [id], onDelete: Cascade)
+  template   ChecklistTemplate  @relation("ChecklistTemplateInstances", fields: [templateId], references: [id], onDelete: Cascade)
+  employee   EmployeeProfile    @relation("EmployeeChecklistInstances", fields: [employeeId], references: [id], onDelete: Cascade)
+  offboarding Offboarding?      @relation("OffboardingChecklistInstance")
+
+  @@index([orgId, employeeId])
+  @@index([templateId])
+  @@map("checklist_instances")
+  @@schema("hr")
+}
+
+model Offboarding {
+  id             String             @id @default(uuid()) @db.Uuid
+  orgId          String             @db.Uuid
+  employeeId     String             @db.Uuid
+  initiatedByUserId String          @db.Uuid
+  checklistInstanceId String?       @unique @db.Uuid
+  reason         String
+  status         OffboardingStatus  @default(IN_PROGRESS)
+  startedAt      DateTime           @default(now())
+  completedAt    DateTime?
+  canceledAt     DateTime?
+  metadata       Json?              @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource     String?
+  correlationId   String?
+  createdBy       String?           @db.Uuid
+  updatedBy       String?           @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  org       Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee  EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  checklistInstance ChecklistInstance? @relation("OffboardingChecklistInstance", fields: [checklistInstanceId], references: [id], onDelete: SetNull)
+  provisioningTasks ProvisioningTask[]
+  workflowRuns      OnboardingWorkflowRun[]
+
+  @@index([orgId, employeeId])
+  @@index([orgId, status])
+  @@map("offboarding_records")
+  @@schema("hr")
+}
+
+model MentorAssignment {
+  id                String                 @id @default(uuid()) @db.Uuid
+  orgId             String                 @db.Uuid
+  employeeId        String                 @db.Uuid
+  mentorOrgId       String                 @db.Uuid
+  mentorUserId      String                 @db.Uuid
+  status            MentorAssignmentStatus @default(ACTIVE)
+  assignedAt        DateTime               @default(now())
+  endedAt           DateTime?
+  reason            String?
+  metadata          Json?                  @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag        DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy         String?                @db.Uuid
+  updatedBy         String?                @db.Uuid
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  org      Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  mentor   Membership     @relation("MentorAssignmentMentor", fields: [mentorOrgId, mentorUserId], references: [orgId, userId], onDelete: Cascade)
+
+  @@index([orgId, employeeId])
+  @@index([mentorOrgId, mentorUserId])
+  @@map("mentor_assignments")
+  @@schema("hr")
+}
+
+model ProvisioningTask {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  orgId              String                 @db.Uuid
+  employeeId         String                 @db.Uuid
+  requestedByUserId  String                 @db.Uuid
+  offboardingId      String?                @db.Uuid
+  taskType           ProvisioningTaskType
+  status             ProvisioningTaskStatus @default(PENDING)
+  systemKey          String?
+  accountIdentifier  String?
+  assetTag           String?
+  accessLevel        String?
+  instructions       String?
+  dueAt              DateTime?
+  completedAt        DateTime?
+  errorMessage       String?
+  metadata           Json?                  @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?                @db.Uuid
+  updatedBy          String?                @db.Uuid
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  org        Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee   EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requester  Membership     @relation("ProvisioningRequester", fields: [orgId, requestedByUserId], references: [orgId, userId], onDelete: Cascade)
+  offboarding Offboarding?  @relation(fields: [offboardingId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, employeeId])
+  @@index([orgId, status])
+  @@index([offboardingId])
+  @@map("provisioning_tasks")
+  @@schema("hr")
+}
+
+model OnboardingWorkflowTemplate {
+  id                 String               @id @default(uuid()) @db.Uuid
+  orgId              String               @db.Uuid
+  name               String
+  description        String?
+  templateType       WorkflowTemplateType @default(ONBOARDING)
+  version            Int                  @default(1)
+  isActive           Boolean              @default(true)
+  definition         Json                 @db.JsonB
+  metadata           Json?                @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?              @db.Uuid
+  updatedBy          String?              @db.Uuid
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  org   Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  runs  OnboardingWorkflowRun[]
+
+  @@index([orgId, templateType, isActive])
+  @@map("onboarding_workflow_templates")
+  @@schema("hr")
+}
+
+model OnboardingWorkflowRun {
+  id                 String             @id @default(uuid()) @db.Uuid
+  orgId              String             @db.Uuid
+  employeeId         String             @db.Uuid
+  templateId         String             @db.Uuid
+  offboardingId      String?            @db.Uuid
+  status             WorkflowRunStatus  @default(IN_PROGRESS)
+  currentStepKey     String?
+  startedAt          DateTime           @default(now())
+  completedAt        DateTime?
+  canceledAt         DateTime?
+  metadata           Json?              @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?            @db.Uuid
+  updatedBy          String?            @db.Uuid
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  org        Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee   EmployeeProfile         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  template   OnboardingWorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  offboarding Offboarding?           @relation(fields: [offboardingId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, employeeId])
+  @@index([templateId])
+  @@index([offboardingId])
+  @@map("onboarding_workflow_runs")
+  @@schema("hr")
+}
+
+model EmailSequenceTemplate {
+  id                 String              @id @default(uuid()) @db.Uuid
+  orgId              String              @db.Uuid
+  name               String
+  description        String?
+  trigger            EmailSequenceTrigger
+  isActive           Boolean             @default(true)
+  steps              Json                @db.JsonB
+  metadata           Json?               @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?             @db.Uuid
+  updatedBy          String?             @db.Uuid
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  org         Organization             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  enrollments EmailSequenceEnrollment[]
+
+  @@index([orgId, trigger, isActive])
+  @@map("email_sequence_templates")
+  @@schema("hr")
+}
+
+model EmailSequenceEnrollment {
+  id                 String              @id @default(uuid()) @db.Uuid
+  orgId              String              @db.Uuid
+  templateId         String              @db.Uuid
+  employeeId         String?             @db.Uuid
+  invitationToken    String?
+  targetEmail        String              @db.Citext
+  status             EmailSequenceStatus @default(ACTIVE)
+  startedAt          DateTime            @default(now())
+  pausedAt           DateTime?
+  completedAt        DateTime?
+  metadata           Json?               @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?             @db.Uuid
+  updatedBy          String?             @db.Uuid
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  org        Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  template   EmailSequenceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  employee   EmployeeProfile?     @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  deliveries EmailSequenceDelivery[]
+
+  @@index([orgId, employeeId])
+  @@index([templateId])
+  @@index([orgId, status])
+  @@map("email_sequence_enrollments")
+  @@schema("hr")
+}
+
+model EmailSequenceDelivery {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  orgId              String                    @db.Uuid
+  enrollmentId       String                    @db.Uuid
+  stepKey            String
+  scheduledAt        DateTime
+  sentAt             DateTime?
+  status             EmailSequenceDeliveryStatus @default(QUEUED)
+  provider           String?
+  errorMessage       String?
+  metadata           Json?                     @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?                   @db.Uuid
+  updatedBy          String?                   @db.Uuid
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  org        Organization             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  enrollment EmailSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status, scheduledAt])
+  @@index([enrollmentId])
+  @@map("email_sequence_deliveries")
+  @@schema("hr")
+}
+
+model OnboardingMetricDefinition {
+  id                 String               @id @default(uuid()) @db.Uuid
+  orgId              String               @db.Uuid
+  key                String
+  label              String
+  unit               String?
+  targetValue        Decimal?             @db.Decimal(12, 2)
+  thresholds         Json?                @db.JsonB
+  isActive           Boolean              @default(true)
+  metadata           Json?                @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?              @db.Uuid
+  updatedBy          String?              @db.Uuid
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  org     Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  results OnboardingMetricResult[]
+
+  @@unique([orgId, key])
+  @@index([orgId, isActive])
+  @@map("onboarding_metric_definitions")
+  @@schema("hr")
+}
+
+model OnboardingMetricResult {
+  id                 String                @id @default(uuid()) @db.Uuid
+  orgId              String                @db.Uuid
+  employeeId         String                @db.Uuid
+  metricId           String                @db.Uuid
+  value              Decimal?              @db.Decimal(12, 2)
+  valueText          String?
+  source             OnboardingMetricSource @default(SYSTEM)
+  measuredAt         DateTime              @default(now())
+  metadata           Json?                 @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?               @db.Uuid
+  updatedBy          String?               @db.Uuid
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  org      Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee EmployeeProfile         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  metric   OnboardingMetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, employeeId])
+  @@index([metricId])
+  @@map("onboarding_metric_results")
+  @@schema("hr")
+}
+
+model OnboardingFeedback {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orgId              String   @db.Uuid
+  employeeId         String   @db.Uuid
+  rating             Int
+  summary            String?
+  comments           String?
+  submittedAt        DateTime @default(now())
+  metadata           Json?    @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?  @db.Uuid
+  updatedBy          String?  @db.Uuid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  org      Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, employeeId])
+  @@map("onboarding_feedback")
+  @@schema("hr")
+}
+
+model DocumentTemplateAssignment {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orgId              String   @db.Uuid
+  employeeId         String   @db.Uuid
+  templateId         String   @db.Uuid
+  documentId         String?  @db.Uuid
+  status             DocumentAssignmentStatus @default(PENDING)
+  assignedAt         DateTime @default(now())
+  completedAt        DateTime?
+  signatureProvider  String?
+  externalEnvelopeId String?
+  metadata           Json?    @db.JsonB
+  dataClassification DataClassificationLevel @default(OFFICIAL)
+  residencyTag       DataResidencyZone       @default(UK_ONLY)
+  auditSource        String?
+  correlationId      String?
+  createdBy          String?  @db.Uuid
+  updatedBy          String?  @db.Uuid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  org      Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  employee EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  document DocumentVault?   @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, employeeId])
+  @@index([templateId])
+  @@index([documentId])
+  @@map("document_template_assignments")
+  @@schema("hr")
+}
+
+model ComplianceTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  name        String
+  categoryKey String?
+  version     String?
+  items       Json     @db.JsonB
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org Organization @relation("OrgComplianceTemplates", fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, categoryKey])
+  @@map("compliance_templates")
+  @@schema("hr")
+}
+
+model ComplianceReminderSettings {
+  orgId               String                   @id @db.Uuid
+  windowDays          Int                      @default(30)
+  escalationDays      Int[]                    @default([])
+  notifyOnComplete    Boolean                  @default(false)
+  dataClassification  DataClassificationLevel  @default(OFFICIAL)
+  residencyTag        DataResidencyZone        @default(UK_ONLY)
+  metadata            Json?                    @db.JsonB
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("compliance_reminder_settings")
+  @@schema("hr")
+}
+
+model ComplianceCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @db.Uuid
+  key       String
+  label     String
+  sortOrder Int      @default(100)
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org Organization @relation("OrgComplianceCategories", fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, key])
+  @@index([orgId, sortOrder])
+  @@map("compliance_categories")
+  @@schema("hr")
+}
+
+model ComplianceLogItem {
+  id            String                @id @default(uuid()) @db.Uuid
+  orgId         String                @db.Uuid
+  userId        String                @db.Uuid
+  templateItemId String
+  categoryKey   String?
+  status        ComplianceItemStatus  @default(PENDING)
+  dueDate       DateTime?
+  completedAt   DateTime?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  notes         String?
+  attachments   Json?                 @db.JsonB
+  metadata      Json?                 @db.JsonB
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  org        Organization @relation("OrgComplianceLogItems", fields: [orgId], references: [id], onDelete: Cascade)
+  membership Membership   @relation("MembershipComplianceLogItems", fields: [orgId, userId], references: [orgId, userId], onDelete: Cascade)
+
+  @@index([orgId, userId])
+  @@index([status, dueDate])
+  @@map("compliance_log_items")
+  @@schema("hr")
+}
