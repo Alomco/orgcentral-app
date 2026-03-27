@@ -42,16 +42,21 @@ export async function completeOnboarding(
 ): Promise<CompleteOnboardingResult> {
     const { userId, email, firstName, lastName, jobTitle, orgName, sector, orgSize } = input
 
+    console.log('[completeOnboarding] starting', { userId, email, orgName, sector, orgSize })
+
     if (!userId || !firstName?.trim() || !lastName?.trim() || !orgName?.trim() || !sector) {
+        console.log('[completeOnboarding] validation failed — missing required fields')
         return { success: false, error: 'Please fill in all required fields.' }
     }
 
     // Idempotency guard — if user already has an org, skip
+    console.log('[completeOnboarding] checking existing membership...')
     const existingMembership = await prisma.membership.findFirst({
         where: { userId, status: 'ACTIVE' },
         select: { orgId: true },
     })
     if (existingMembership) {
+        console.log('[completeOnboarding] user already has org:', existingMembership.orgId)
         return { success: true, orgId: existingMembership.orgId }
     }
 
@@ -59,10 +64,12 @@ export async function completeOnboarding(
     const slug = slugify(orgName) || `org-${orgId.slice(0, 8)}`
     const now = new Date()
 
+    console.log('[completeOnboarding] will create org', { orgId, slug })
+
     try {
-        // All 7 steps in a single transaction — if any fails, everything rolls back
         const result = await prisma.$transaction(async (tx) => {
             // 1. Create the Organisation
+            console.log('[completeOnboarding] step 1: creating organisation...')
             const organization = await tx.organization.create({
                 data: {
                     id: orgId,
@@ -78,8 +85,10 @@ export async function completeOnboarding(
                     employeeCountRange: orgSize || null,
                 },
             })
+            console.log('[completeOnboarding] step 1 done:', organization.id)
 
             // 2. Create the orgAdmin role
+            console.log('[completeOnboarding] step 2: creating orgAdmin role...')
             const role = await tx.role.create({
                 data: {
                     orgId: organization.id,
@@ -95,8 +104,10 @@ export async function completeOnboarding(
                     isDefault: true,
                 },
             })
+            console.log('[completeOnboarding] step 2 done:', role.id)
 
             // 3. Create the Membership
+            console.log('[completeOnboarding] step 3: creating membership...')
             await tx.membership.create({
                 data: {
                     orgId: organization.id,
@@ -109,8 +120,10 @@ export async function completeOnboarding(
                     createdBy: userId,
                 },
             })
+            console.log('[completeOnboarding] step 3 done')
 
             // 4. Create the EmployeeProfile
+            console.log('[completeOnboarding] step 4: creating employee profile...')
             await tx.employeeProfile.create({
                 data: {
                     id: randomUUID(),
@@ -124,8 +137,10 @@ export async function completeOnboarding(
                     employeeNumber: 'EMP-001',
                 },
             })
+            console.log('[completeOnboarding] step 4 done')
 
             // 5. Seed default leave policies
+            console.log('[completeOnboarding] step 5: seeding leave policies...')
             for (const policy of DEFAULT_LEAVE_POLICIES) {
                 await tx.leavePolicy.create({
                     data: {
@@ -139,8 +154,10 @@ export async function completeOnboarding(
                     },
                 })
             }
+            console.log('[completeOnboarding] step 5 done')
 
             // 6. Sync Better Auth org tables
+            console.log('[completeOnboarding] step 6: syncing auth organisation...')
             await tx.authOrganization.create({
                 data: {
                     id: organization.id,
@@ -153,8 +170,10 @@ export async function completeOnboarding(
                     }),
                 },
             })
+            console.log('[completeOnboarding] step 6 done')
 
             // 7. Sync Better Auth org membership
+            console.log('[completeOnboarding] step 7: syncing auth org member...')
             await tx.authOrgMember.create({
                 data: {
                     id: randomUUID(),
@@ -163,12 +182,16 @@ export async function completeOnboarding(
                     role: 'orgAdmin',
                 },
             })
+            console.log('[completeOnboarding] step 7 done')
 
             return organization.id
         })
 
+        console.log('[completeOnboarding] SUCCESS — orgId:', result)
         return { success: true, orgId: result }
     } catch (err: unknown) {
+        console.error('[completeOnboarding] FAILED:', err)
+
         const message = err instanceof Error ? err.message : String(err)
 
         if (message.includes('Unique constraint') && message.includes('slug')) {
