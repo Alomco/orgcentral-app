@@ -10,8 +10,24 @@ export const protectedRoutes: Routes = {
             pageContainerType: 'contained',
         },
     },
+    '/onboarding': {
+        key: 'onboarding',
+        authority: [],
+        meta: {
+            pageBackgroundType: 'plain',
+            pageContainerType: 'contained',
+        },
+    },
     '/hr/leave/requests': {
         key: 'hr.leave.requests',
+        authority: [],
+        meta: {
+            pageBackgroundType: 'plain',
+            pageContainerType: 'contained',
+        },
+    },
+    '/hr/leave/approvals': {
+        key: 'hr.leave.approvals',
         authority: [],
         meta: {
             pageBackgroundType: 'plain',
