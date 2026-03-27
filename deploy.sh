@@ -35,6 +35,9 @@ npm ci
 echo "  Generating Prisma client..."
 npx prisma generate
 
+echo "  Cleaning previous build..."
+rm -rf .next
+
 echo "  Building..."
 npm run build
 
