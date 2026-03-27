@@ -1,6 +1,5 @@
 'use server'
 
-import type { Prisma } from '@prisma/client'
 import { prisma } from '@/server/lib/prisma'
 
 /**
@@ -54,16 +53,20 @@ function hoursToWorkingDays(hours: number): number {
     return Math.round(days * 2) / 2
 }
 
-/** Prisma return type for the leave request query with policy + attachments. */
-type LeaveRequestWithIncludes = Prisma.LeaveRequestGetPayload<{
-    include: {
-        policy: { select: { name: true } }
-        attachments: { select: { id: true } }
-    }
-}>
+// Helper to run the leave request query — used to infer the return type.
+function buildLeaveRequestQuery(orgId: string, userId: string) {
+    return prisma.leaveRequest.findMany({
+        where: { orgId, userId },
+        include: {
+            policy: { select: { name: true } },
+            attachments: { select: { id: true } },
+        },
+        orderBy: { createdAt: 'desc' as const },
+    })
+}
 
-/** Prisma return type for the approver name lookup. */
-type ApproverRow = { id: string; name: string | null }
+/** Inferred Prisma return type for the leave request query with includes. */
+type LeaveRequestWithIncludes = Awaited<ReturnType<typeof buildLeaveRequestQuery>>[number]
 
 export async function getLeaveRequests(
     userId: string,
@@ -77,36 +80,22 @@ export async function getLeaveRequests(
         return { requests: [], summary: { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 } }
     }
 
-    const leaveRequests: LeaveRequestWithIncludes[] = await prisma.leaveRequest.findMany({
-        where: {
-            orgId: membership.orgId,
-            userId,
-        },
-        include: {
-            policy: { select: { name: true } },
-            attachments: { select: { id: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-    })
+    const leaveRequests = await buildLeaveRequestQuery(membership.orgId, userId)
 
     // Look up approver names in bulk
-    const approverUserIds: string[] = [
-        ...new Set(
-            leaveRequests
-                .filter((r: LeaveRequestWithIncludes): r is LeaveRequestWithIncludes & { approverUserId: string } =>
-                    r.approverUserId != null,
-                )
-                .map((r: LeaveRequestWithIncludes & { approverUserId: string }) => r.approverUserId),
-        ),
-    ]
-    const approvers: ApproverRow[] = approverUserIds.length > 0
+    const approverUserIds: string[] = leaveRequests
+        .map((r: LeaveRequestWithIncludes) => r.approverUserId)
+        .filter((id: string | null): id is string => id != null)
+    const uniqueApproverIds = [...new Set(approverUserIds)]
+
+    const approvers = uniqueApproverIds.length > 0
         ? await prisma.authUser.findMany({
-            where: { id: { in: approverUserIds } },
+            where: { id: { in: uniqueApproverIds } },
             select: { id: true, name: true },
         })
         : []
     const approverNameMap = new Map(
-        approvers.map((a: ApproverRow) => [a.id, a.name ?? 'Manager']),
+        approvers.map((a: { id: string; name: string | null }) => [a.id, a.name ?? 'Manager']),
     )
 
     const summary: LeaveRequestSummary = {
