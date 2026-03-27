@@ -30,7 +30,7 @@ echo "  Pulling latest..."
 git pull origin main
 
 echo "  Installing dependencies..."
-npm ci --omit=dev
+npm ci
 
 echo "  Generating Prisma client..."
 npx prisma generate
