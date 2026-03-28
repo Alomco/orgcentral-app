@@ -3,7 +3,7 @@
 import { prisma } from '@/server/lib/prisma'
 
 /**
- * Display-ready leave request shape matching the ECME page component.
+ * Display-ready leave request shape matching the page component.
  */
 export interface LeaveRequestRow {
     id: string
