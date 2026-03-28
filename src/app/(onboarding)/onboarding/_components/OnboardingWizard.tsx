@@ -72,7 +72,7 @@ export default function OnboardingWizard({
                 return
             }
 
-            router.push('/hr/leave/requests')
+            router.push('/hr/dashboard')
         } catch {
             setError('Something went wrong. Please check your connection and try again.')
         } finally {

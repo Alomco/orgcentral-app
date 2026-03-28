@@ -7,16 +7,6 @@ import type { NavigationTree } from '@/@types/navigation'
 
 const navigationConfig: NavigationTree[] = [
     {
-        key: 'home',
-        path: '/home',
-        title: 'Home',
-        translateKey: 'nav.home',
-        icon: 'home',
-        type: NAV_ITEM_TYPE_ITEM,
-        authority: [],
-        subMenu: [],
-    },
-    {
         key: 'hr',
         path: '',
         title: 'HR',
@@ -25,6 +15,16 @@ const navigationConfig: NavigationTree[] = [
         type: NAV_ITEM_TYPE_COLLAPSE,
         authority: [],
         subMenu: [
+            {
+                key: 'hr.dashboard',
+                path: '/hr/dashboard',
+                title: 'Dashboard',
+                translateKey: 'nav.hr.dashboard',
+                icon: '',
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [],
+                subMenu: [],
+            },
             {
                 key: 'hr.leave.requests',
                 path: '/hr/leave/requests',

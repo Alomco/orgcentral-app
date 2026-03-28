@@ -10,6 +10,14 @@ export const protectedRoutes: Routes = {
             pageContainerType: 'contained',
         },
     },
+    '/hr/dashboard': {
+        key: 'hr.dashboard',
+        authority: [],
+        meta: {
+            pageBackgroundType: 'plain',
+            pageContainerType: 'contained',
+        },
+    },
     '/onboarding': {
         key: 'onboarding',
         authority: [],
