@@ -16,7 +16,13 @@ type DropdownList = {
     icon: JSX.Element
 }
 
-const dropdownItemList: DropdownList[] = []
+const dropdownItemList: DropdownList[] = [
+    {
+        label: 'Profile',
+        path: '/profile',
+        icon: <PiUserDuotone />,
+    },
+]
 
 const _UserDropdown = () => {
     const { session } = useCurrentSession()
@@ -78,7 +84,7 @@ const _UserDropdown = () => {
                 <span className="text-xl">
                     <PiSignOutDuotone />
                 </span>
-                <span>Sign Out</span>
+                <span>Sign out</span>
             </Dropdown.Item>
         </Dropdown>
     )
