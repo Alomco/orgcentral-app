@@ -5,16 +5,16 @@
 @layer theme {
 	:root {
 		--neutral: #ffffff;
-		--primary: #0066CC;
-		--primary-deep: #003087;
-		--primary-mild: #00A9CE;
-		--primary-subtle: #0066CC1a;
+		--primary: #2a85ff;
+		--primary-deep: #0069f6;
+		--primary-mild: #4996ff;
+		--primary-subtle: #2a85ff1a;
 		--error: #ff6a55;
 		--error-subtle: #ff6a551a;
 		--success: #10b981;
 		--success-subtle: #05eb7624;
-		--info: #0066CC;
-		--info-subtle: #0066CC1a;
+		--info: #2a85ff;
+		--info-subtle: #2a85ff1a;
 		--warning: #f59e0b;
 		--warning-subtle: #ffd40045;
 		--gray-50: #fafafa;
@@ -32,16 +32,16 @@
 
 	.dark {
 		--neutral: #ffffff;
-		--primary: #0066CC;
-		--primary-deep: #003087;
-		--primary-mild: #00A9CE;
-		--primary-subtle: #0066CC1a;
+		--primary: #2a85ff;
+		--primary-deep: #0069f6;
+		--primary-mild: #4996ff;
+		--primary-subtle: #2a85ff1a;
 		--error: #ff6a55;
 		--error-subtle: #ff6a551a;
 		--success: #10b981;
 		--success-subtle: #05eb7624;
-		--info: #0066CC;
-		--info-subtle: #0066CC1a;
+		--info: #2a85ff;
+		--info-subtle: #2a85ff1a;
 		--warning: #f59e0b;
 		--warning-subtle: #ffd40045;
 		--gray-50: #fafafa;
@@ -115,4 +115,13 @@
 	.heading-text {
 		@apply text-gray-900 dark:text-gray-100;
 	}
+}
+
+/* OrgCentral brand override for pre-login pages (auth, onboarding, landing).
+   Inside the app, tenants can customise their own primary colour. */
+.orgcentral-brand {
+	--primary: #0066CC;
+	--primary-deep: #003087;
+	--primary-mild: #00A9CE;
+	--primary-subtle: #0066CC1a;
 }

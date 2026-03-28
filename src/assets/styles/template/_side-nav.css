@@ -17,43 +17,6 @@
   }
 
   .side-nav-bg {
-    @apply ltr:border-r rtl:border-l border-gray-200 dark:border-gray-700;
-    background-color: #001A4E;
-    color: #ffffff;
-
-    .menu-item {
-      color: rgba(255, 255, 255, 0.6);
-
-      &.menu-item-hoverable:hover {
-        color: #ffffff;
-        background-color: rgba(255, 255, 255, 0.08);
-      }
-
-      &.menu-item-active {
-        color: #00A9CE;
-      }
-    }
-
-    .menu-collapse-item {
-      color: rgba(255, 255, 255, 0.6);
-
-      &:hover {
-        color: #ffffff;
-        background-color: rgba(255, 255, 255, 0.08);
-      }
-
-      &.menu-collapse-item-active {
-        color: #00A9CE;
-        background-color: rgba(0, 169, 206, 0.1);
-      }
-    }
-
-    .menu-item-divider {
-      border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .side-nav-header a {
-      color: #ffffff;
-    }
+    @apply ltr:border-r rtl:border-l bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700;
   }
 }
