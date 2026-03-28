@@ -69,21 +69,21 @@ export default async function LandingPage() {
                             {/* Badge */}
                             <div className="animate-fade-up mb-8 inline-flex items-center gap-2 rounded-full border border-[#00A9CE]/30 bg-[#00A9CE]/10 px-4 py-1.5 text-xs text-[#00A9CE]">
                                 <span className="h-1.5 w-1.5 rounded-full bg-[#00A9CE]" />
-                                Now in early access · Free for public sector teams
+                                Now in early access · Free to start
                             </div>
 
                             {/* Headline */}
                             <h1 className="animate-fade-up animate-fade-up-d1 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                                Run your team.
+                                Your team runs better
                                 <br />
-                                <span className="text-white/40">Not your admin.</span>
+                                <span className="text-white/40">when admin doesn't get in the way</span>
                             </h1>
 
                             {/* Subheading */}
                             <p className="animate-fade-up animate-fade-up-d2 mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
-                                OrgCentral gives public sector managers a simpler way to handle
-                                HR, leave, and operations — without the complexity or cost of
-                                traditional systems.
+                                OrgCentral brings HR, leave management, and team operations into
+                                one place — simple enough for any manager, powerful enough for
+                                any organisation.
                             </p>
 
                             {/* CTAs */}
@@ -132,13 +132,13 @@ export default async function LandingPage() {
                 <section className="border-y border-white/10 bg-[#003087]">
                     <div className="mx-auto max-w-6xl px-6 py-6">
                         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/60">
-                            <span>Built for public sector</span>
+                            <span>Healthcare</span>
                             <span className="hidden text-white/30 sm:inline">·</span>
-                            <span>DSPT compliant</span>
+                            <span>Education</span>
                             <span className="hidden text-white/30 sm:inline">·</span>
-                            <span>Free to start</span>
+                            <span>Local Government</span>
                             <span className="hidden text-white/30 sm:inline">·</span>
-                            <span>No IT team needed</span>
+                            <span>Trusted by managers</span>
                         </div>
                     </div>
                 </section>
@@ -151,7 +151,7 @@ export default async function LandingPage() {
                                 What's available now
                             </div>
                             <h2 className="text-2xl font-bold tracking-tight text-[#231F20] sm:text-3xl">
-                                Everything a manager actually needs
+                                Everything a manager actually needs — without the complexity
                             </h2>
                         </div>
                         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -202,7 +202,7 @@ export default async function LandingPage() {
                             ))}
                         </div>
                         <p className="mt-8 text-center text-sm text-[#231F20]/50">
-                            We're building in public. New features ship regularly.
+                            We're building in public. Early access members shape what comes next.
                         </p>
                     </div>
                 </section>
@@ -212,7 +212,7 @@ export default async function LandingPage() {
                     <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
                         <div className="mx-auto max-w-2xl text-center">
                             <h2 className="text-2xl font-bold tracking-tight text-[#231F20] sm:text-3xl">
-                                Simple, honest pricing
+                                Honest pricing. No surprises.
                             </h2>
                         </div>
                         <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-2">
@@ -266,11 +266,11 @@ export default async function LandingPage() {
                     <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
                         <div className="mx-auto max-w-2xl text-center">
                             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                                Ready to simplify your team management?
+                                Ready to take back your time?
                             </h2>
                             <p className="mt-4 text-base text-white/60">
-                                Join public sector teams already using OrgCentral.
-                                Free to start, no commitment.
+                                Join teams already using OrgCentral to manage leave, approvals,
+                                and HR — free to start, no commitment, no IT team needed.
                             </p>
                             <Link
                                 href="/sign-up"
