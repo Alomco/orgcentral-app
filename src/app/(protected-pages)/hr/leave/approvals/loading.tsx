@@ -1,24 +1,36 @@
+import Container from '@/components/shared/Container'
+import AdaptiveCard from '@/components/shared/AdaptiveCard'
+import Skeleton from '@/components/ui/Skeleton'
+import Table from '@/components/ui/Table'
+import TableRowSkeleton from '@/components/shared/loaders/TableRowSkeleton'
+
+const { THead, Th, Tr } = Table
+
 export default function HrLeaveApprovalsLoading() {
     return (
-        <div className="space-y-6 p-6">
-            <div>
-                <div className="h-8 w-48 animate-pulse rounded-lg bg-gray-200" />
-                <div className="mt-2 h-4 w-64 animate-pulse rounded bg-gray-100" />
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 p-4">
-                    <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
+        <Container>
+            <AdaptiveCard>
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <Skeleton height={28} width={160} />
+                        <Skeleton height={14} width={100} />
+                    </div>
+                    <Table>
+                        <THead>
+                            <Tr>
+                                <Th>Employee</Th>
+                                <Th>Leave type</Th>
+                                <Th>Dates</Th>
+                                <Th>Duration</Th>
+                                <Th>Reason</Th>
+                                <Th>Submitted</Th>
+                                <Th>Actions</Th>
+                            </Tr>
+                        </THead>
+                        <TableRowSkeleton columns={7} rows={5} />
+                    </Table>
                 </div>
-                <div className="p-4 space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className="h-16 animate-pulse rounded-xl bg-gray-100"
-                        />
-                    ))}
-                </div>
-            </div>
-        </div>
+            </AdaptiveCard>
+        </Container>
     )
 }

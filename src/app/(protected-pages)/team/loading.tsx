@@ -1,20 +1,34 @@
+import Container from '@/components/shared/Container'
+import AdaptiveCard from '@/components/shared/AdaptiveCard'
+import Skeleton from '@/components/ui/Skeleton'
+import Table from '@/components/ui/Table'
+import TableRowSkeleton from '@/components/shared/loaders/TableRowSkeleton'
+
+const { THead, Th, Tr } = Table
+
 export default function TeamLoading() {
     return (
-        <div className="space-y-6 p-6">
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="h-8 w-40 animate-pulse rounded-lg bg-gray-200" />
-                    <div className="mt-2 h-4 w-56 animate-pulse rounded bg-gray-100" />
+        <Container>
+            <AdaptiveCard>
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <Skeleton height={28} width={120} />
+                        <Skeleton height={36} width={140} />
+                    </div>
+                    <Table>
+                        <THead>
+                            <Tr>
+                                <Th>Name</Th>
+                                <Th>Email</Th>
+                                <Th>Role</Th>
+                                <Th>Joined</Th>
+                                <Th>Actions</Th>
+                            </Tr>
+                        </THead>
+                        <TableRowSkeleton columns={5} rows={4} avatarInColumns={[0]} />
+                    </Table>
                 </div>
-                <div className="h-10 w-36 animate-pulse rounded-xl bg-gray-200" />
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="p-4 space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-100" />
-                    ))}
-                </div>
-            </div>
-        </div>
+            </AdaptiveCard>
+        </Container>
     )
 }

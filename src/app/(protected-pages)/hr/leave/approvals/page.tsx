@@ -1,5 +1,7 @@
 import { auth } from '@/auth'
 import { getLeaveRequestsForApproval } from '@/server/actions/hr/getLeaveRequestsForApproval'
+import Container from '@/components/shared/Container'
+import AdaptiveCard from '@/components/shared/AdaptiveCard'
 import LeaveApprovalsView from './_components/LeaveApprovalsView'
 
 export default async function HrLeaveApprovalsPage() {
@@ -8,14 +10,14 @@ export default async function HrLeaveApprovalsPage() {
 
     if (!userId) {
         return (
-            <div className="space-y-6 p-6">
-                <h1 className="text-2xl font-semibold">Leave Approvals</h1>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-gray-500">
+            <Container>
+                <AdaptiveCard>
+                    <h3>Leave Approvals</h3>
+                    <p className="mt-2 text-gray-500">
                         You must be signed in to view approvals.
                     </p>
-                </div>
-            </div>
+                </AdaptiveCard>
+            </Container>
         )
     }
 
@@ -24,16 +26,22 @@ export default async function HrLeaveApprovalsPage() {
         requests = await getLeaveRequestsForApproval(userId)
     } catch {
         return (
-            <div className="space-y-6 p-6">
-                <h1 className="text-2xl font-semibold">Leave Approvals</h1>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-gray-500">
+            <Container>
+                <AdaptiveCard>
+                    <h3>Leave Approvals</h3>
+                    <p className="mt-2 text-gray-500">
                         Something went wrong loading approvals. Please sign out and sign back in.
                     </p>
-                </div>
-            </div>
+                </AdaptiveCard>
+            </Container>
         )
     }
 
-    return <LeaveApprovalsView requests={requests} userId={userId} />
+    return (
+        <Container>
+            <AdaptiveCard>
+                <LeaveApprovalsView requests={requests} userId={userId} />
+            </AdaptiveCard>
+        </Container>
+    )
 }
