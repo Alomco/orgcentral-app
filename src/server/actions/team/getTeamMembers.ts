@@ -7,6 +7,7 @@ export interface TeamMemberRow {
     name: string
     email: string
     role: string
+    roleId: string
     joinedAt: string
 }
 
@@ -38,6 +39,7 @@ export async function getTeamMembers(userId: string): Promise<TeamMemberRow[]> {
             userId: true,
             activatedAt: true,
             invitedAt: true,
+            roleId: true,
             role: { select: { name: true } },
         },
         orderBy: { activatedAt: 'asc' },
@@ -57,6 +59,7 @@ export async function getTeamMembers(userId: string): Promise<TeamMemberRow[]> {
             name: user?.name ?? user?.email?.split('@')[0] ?? 'Unknown',
             email: user?.email ?? '',
             role: ROLE_LABELS[m.role?.name ?? ''] ?? m.role?.name ?? 'Staff',
+            roleId: m.roleId ?? '',
             joinedAt: formatDate(m.activatedAt ?? m.invitedAt ?? new Date()),
         }
     })

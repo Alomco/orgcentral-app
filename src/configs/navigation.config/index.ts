@@ -77,6 +77,16 @@ const navigationConfig: NavigationTree[] = [
                 subMenu: [],
             },
             {
+                key: 'org.roles',
+                path: '/settings/roles',
+                title: 'Roles',
+                translateKey: 'nav.org.roles',
+                icon: '',
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [],
+                subMenu: [],
+            },
+            {
                 key: 'org.settings',
                 path: '/settings',
                 title: 'Settings',

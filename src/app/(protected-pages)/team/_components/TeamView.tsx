@@ -4,14 +4,17 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { TeamMemberRow } from '@/server/actions/team/getTeamMembers'
 import type { PendingInvitationRow } from '@/server/actions/team/getPendingInvitations'
+import type { RoleRow } from '@/server/actions/roles/getRoles'
 
 interface TeamViewProps {
     members: TeamMemberRow[]
     invitations: PendingInvitationRow[]
     userId: string
+    roles: RoleRow[]
+    isAdmin: boolean
 }
 
-export default function TeamView({ members, invitations, userId }: TeamViewProps) {
+export default function TeamView({ members, invitations, userId, roles, isAdmin }: TeamViewProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const isJustYou = members.length <= 1 && invitations.length === 0
 
@@ -67,20 +70,12 @@ export default function TeamView({ members, invitations, userId }: TeamViewProps
                                             <th className="px-4 py-3 font-medium">Email</th>
                                             <th className="px-4 py-3 font-medium">Role</th>
                                             <th className="px-4 py-3 font-medium">Joined</th>
+                                            {isAdmin && <th className="px-4 py-3 font-medium text-right">Actions</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {members.map((m) => (
-                                            <tr key={m.id} className="border-t border-gray-100">
-                                                <td className="px-4 py-3 font-medium">{m.name}</td>
-                                                <td className="px-4 py-3 text-gray-500">{m.email}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                                                        {m.role}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-500">{m.joinedAt}</td>
-                                            </tr>
+                                            <MemberRow key={m.id} member={m} roles={roles} isAdmin={isAdmin} userId={userId} />
                                         ))}
                                     </tbody>
                                 </table>
@@ -342,5 +337,90 @@ function InviteModal({
                 </div>
             </div>
         </div>
+    )
+}
+
+const ROLE_DISPLAY: Record<string, string> = {
+    orgAdmin: 'Admin',
+    manager: 'Manager',
+    member: 'Staff',
+}
+
+function MemberRow({
+    member,
+    roles,
+    isAdmin,
+    userId,
+}: {
+    member: TeamMemberRow
+    roles: RoleRow[]
+    isAdmin: boolean
+    userId: string
+}) {
+    const router = useRouter()
+    const [changing, setChanging] = useState(false)
+    const [isPending, setIsPending] = useState(false)
+    const isSelf = member.id === userId
+
+    const handleChangeRole = async (newRoleId: string) => {
+        setIsPending(true)
+        try {
+            const res = await fetch('/api/team/change-role', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId: member.id, roleId: newRoleId }),
+            })
+            const result = await res.json()
+            if (result.success) {
+                setChanging(false)
+                router.refresh()
+            }
+        } catch {
+            // silently fail
+        } finally {
+            setIsPending(false)
+        }
+    }
+
+    return (
+        <tr className="border-t border-gray-100">
+            <td className="px-4 py-3 font-medium">{member.name}</td>
+            <td className="px-4 py-3 text-gray-500">{member.email}</td>
+            <td className="px-4 py-3">
+                <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                    {member.role}
+                </span>
+            </td>
+            <td className="px-4 py-3 text-gray-500">{member.joinedAt}</td>
+            {isAdmin && (
+                <td className="px-4 py-3 text-right">
+                    {isSelf ? (
+                        <span className="text-xs text-gray-400">You</span>
+                    ) : changing ? (
+                        <select
+                            value={member.roleId}
+                            onChange={(e) => handleChangeRole(e.target.value)}
+                            disabled={isPending}
+                            className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                            autoFocus
+                            onBlur={() => !isPending && setChanging(false)}
+                        >
+                            {roles.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                    {ROLE_DISPLAY[r.name] ?? r.name}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <button
+                            onClick={() => setChanging(true)}
+                            className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                        >
+                            Change role
+                        </button>
+                    )}
+                </td>
+            )}
+        </tr>
     )
 }

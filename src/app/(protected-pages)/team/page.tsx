@@ -1,6 +1,8 @@
 import { auth } from '@/auth'
 import { getTeamMembers } from '@/server/actions/team/getTeamMembers'
 import { getPendingInvitations } from '@/server/actions/team/getPendingInvitations'
+import { getRoles } from '@/server/actions/roles/getRoles'
+import { getUserRole } from '@/server/lib/getUserRole'
 import TeamView from './_components/TeamView'
 
 export default async function TeamPage() {
@@ -18,11 +20,13 @@ export default async function TeamPage() {
         )
     }
 
-    let members, invitations
+    let members, invitations, roles, userRole
     try {
-        ;[members, invitations] = await Promise.all([
+        ;[members, invitations, roles, userRole] = await Promise.all([
             getTeamMembers(userId),
             getPendingInvitations(userId),
+            getRoles(userId),
+            getUserRole(userId),
         ])
     } catch {
         return (
@@ -35,5 +39,13 @@ export default async function TeamPage() {
         )
     }
 
-    return <TeamView members={members} invitations={invitations} userId={userId} />
+    return (
+        <TeamView
+            members={members}
+            invitations={invitations}
+            userId={userId}
+            roles={roles}
+            isAdmin={userRole?.isAdmin ?? false}
+        />
+    )
 }
