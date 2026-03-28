@@ -36,6 +36,11 @@ export const protectedRoutes: Routes = {
     },
 }
 
-export const publicRoutes: Routes = {}
+export const publicRoutes: Routes = {
+    '/': {
+        key: 'landing',
+        authority: [],
+    },
+}
 
 export const authRoutes = authRoute
