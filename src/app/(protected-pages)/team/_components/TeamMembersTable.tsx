@@ -181,6 +181,17 @@ function RoleChangeCell({
                     }}
                     isDisabled={isPending}
                     menuPlacement="auto"
+                    menuPortalTarget={
+                        typeof document !== 'undefined'
+                            ? document.body
+                            : undefined
+                    }
+                    styles={{
+                        menuPortal: (base) => ({
+                            ...base,
+                            zIndex: 9999,
+                        }),
+                    }}
                 />
             </div>
         )

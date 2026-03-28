@@ -1,14 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Dialog from '@/components/ui/Dialog'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Avatar from '@/components/ui/Avatar'
 import Switcher from '@/components/ui/Switcher'
+import ScrollBar from '@/components/ui/ScrollBar'
 import { FormItem } from '@/components/ui/Form'
 import type { RoleRow } from '@/server/actions/roles/getRoles'
-import { PERMISSION_GROUPS, NEW_ROLE_DEFAULT_PERMISSIONS } from '@/server/lib/permissions'
+import {
+    PERMISSION_GROUPS,
+    NEW_ROLE_DEFAULT_PERMISSIONS,
+} from '@/server/lib/permissions'
+import type { PermissionGroup } from '@/server/lib/permissions'
+import {
+    TbUserCog,
+    TbBuilding,
+    TbChartBar,
+    TbChevronDown,
+    TbChevronRight,
+} from 'react-icons/tb'
+import type { ReactNode } from 'react'
+
+const moduleIcon: Record<string, ReactNode> = {
+    'HR — Leave': <TbUserCog />,
+    Organisation: <TbBuilding />,
+    Platform: <TbChartBar />,
+}
 
 interface RoleModalProps {
     isOpen: boolean
@@ -26,14 +46,45 @@ export default function RoleModal({ isOpen, role, onClose }: RoleModalProps) {
     )
     const [isPending, setIsPending] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
+        new Set(),
+    )
 
-    const togglePermission = (key: string) => {
+    const togglePermission = useCallback((key: string) => {
         setPermissions((prev) =>
             prev.includes(key)
                 ? prev.filter((p) => p !== key)
                 : [...prev, key],
         )
-    }
+    }, [])
+
+    const toggleModule = useCallback((moduleName: string) => {
+        setCollapsedModules((prev) => {
+            const next = new Set(prev)
+            if (next.has(moduleName)) {
+                next.delete(moduleName)
+            } else {
+                next.add(moduleName)
+            }
+            return next
+        })
+    }, [])
+
+    const toggleAllInModule = useCallback(
+        (group: PermissionGroup, allSelected: boolean) => {
+            setPermissions((prev) => {
+                const groupKeys = group.permissions.map((p) => p.key)
+                if (allSelected) {
+                    return prev.filter((p) => !groupKeys.includes(p))
+                } else {
+                    const newPerms = new Set(prev)
+                    groupKeys.forEach((k) => newPerms.add(k))
+                    return Array.from(newPerms)
+                }
+            })
+        },
+        [],
+    )
 
     const handleSave = async () => {
         setError(null)
@@ -69,6 +120,7 @@ export default function RoleModal({ isOpen, role, onClose }: RoleModalProps) {
         setDescription(role?.description ?? '')
         setPermissions(role?.permissions ?? NEW_ROLE_DEFAULT_PERMISSIONS)
         setError(null)
+        setCollapsedModules(new Set())
         onClose()
     }
 
@@ -77,91 +129,187 @@ export default function RoleModal({ isOpen, role, onClose }: RoleModalProps) {
             isOpen={isOpen}
             onClose={handleClose}
             onRequestClose={handleClose}
-            width={520}
+            width={640}
+            contentClassName="pb-0 px-0"
         >
-            <h4 className="mb-1">
-                {isEditing ? 'Edit role' : 'Add a new role'}
-            </h4>
-            <p className="text-sm text-gray-500 mb-6">
-                {isEditing
-                    ? 'Update permissions for this role.'
-                    : 'Create a new role with custom permissions.'}
-            </p>
-
-            <div className="flex flex-col gap-5">
-                {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                        {error}
-                    </div>
+            {/* Header — outside scroll area */}
+            <div className="px-6 pt-4 pb-2">
+                <h4>{isEditing ? role.name : 'Create role'}</h4>
+                {isEditing && role.description && (
+                    <p className="text-sm text-gray-500 mt-1">
+                        {role.description}
+                    </p>
                 )}
+            </div>
 
-                <FormItem label="Role name" asterisk>
-                    <Input
-                        type="text"
-                        value={name}
-                        onChange={(e) =>
-                            setName((e.target as HTMLInputElement).value)
-                        }
-                        disabled={isEditing && role.isSystem}
-                        placeholder="e.g. Team Lead"
-                    />
-                    {isEditing && role.isSystem && (
-                        <p className="mt-1 text-xs text-gray-400">
-                            System role names cannot be changed.
-                        </p>
+            {/* Scrollable content — fixed max-height so it never overflows viewport */}
+            <ScrollBar className="max-h-[60vh] overflow-y-auto">
+                <div className="px-6 py-4 flex flex-col gap-5">
+                    {error && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
                     )}
-                </FormItem>
 
-                <FormItem label="Description (optional)">
-                    <Input
-                        type="text"
-                        value={description}
-                        onChange={(e) =>
-                            setDescription(
-                                (e.target as HTMLInputElement).value,
+                    {/* Name + description fields */}
+                    <FormItem label="Role name" asterisk>
+                        <Input
+                            type="text"
+                            value={name}
+                            onChange={(e) =>
+                                setName(
+                                    (e.target as HTMLInputElement).value,
+                                )
+                            }
+                            disabled={isEditing && role.isSystem}
+                            placeholder="e.g. Team Lead"
+                        />
+                        {isEditing && role.isSystem && (
+                            <p className="mt-1 text-xs text-gray-400">
+                                System role names cannot be changed.
+                            </p>
+                        )}
+                    </FormItem>
+
+                    <FormItem label="Description (optional)">
+                        <Input
+                            type="text"
+                            value={description}
+                            onChange={(e) =>
+                                setDescription(
+                                    (e.target as HTMLInputElement).value,
+                                )
+                            }
+                            placeholder="What this role is for"
+                        />
+                    </FormItem>
+
+                    {/* Permission modules — collapsible with select all toggle */}
+                    <div>
+                        <span className="font-semibold heading-text mb-2 block">
+                            Permissions
+                        </span>
+
+                        {PERMISSION_GROUPS.map((group, index) => {
+                            const isCollapsed = collapsedModules.has(
+                                group.module,
                             )
-                        }
-                        placeholder="What this role is for"
-                    />
-                </FormItem>
+                            const groupKeys = group.permissions.map(
+                                (p) => p.key,
+                            )
+                            const allSelected = groupKeys.every((k) =>
+                                permissions.includes(k),
+                            )
+                            const someSelected =
+                                !allSelected &&
+                                groupKeys.some((k) =>
+                                    permissions.includes(k),
+                                )
+                            const isLast =
+                                index === PERMISSION_GROUPS.length - 1
 
-                {/* Permission toggles — using Switcher instead of checkboxes per task spec */}
-                <div>
-                    <div className="mb-3 text-sm font-medium heading-text">
-                        Permissions
-                    </div>
-                    <div className="space-y-4">
-                        {PERMISSION_GROUPS.map((group) => (
-                            <div key={group.module}>
-                                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-                                    {group.module}
-                                </div>
-                                <div className="space-y-2">
-                                    {group.permissions.map((perm) => (
-                                        <div
-                                            key={perm.key}
-                                            className="flex items-center justify-between rounded-lg px-2 py-1.5 transition hover:bg-gray-50 dark:hover:bg-gray-700"
+                            return (
+                                <div
+                                    key={group.module}
+                                    className={`py-4 ${!isLast ? 'border-b border-gray-200 dark:border-gray-600' : ''}`}
+                                >
+                                    {/* Module header with icon, name, select all, and collapse toggle */}
+                                    <div className="flex items-center justify-between">
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-3 flex-1 text-left"
+                                            onClick={() =>
+                                                toggleModule(group.module)
+                                            }
                                         >
-                                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                {perm.label}
+                                            <Avatar
+                                                className="bg-transparent dark:bg-transparent p-2 border-2 border-gray-200 dark:border-gray-600 text-primary"
+                                                size={40}
+                                                icon={
+                                                    moduleIcon[
+                                                        group.module
+                                                    ] ?? <TbUserCog />
+                                                }
+                                                shape="round"
+                                            />
+                                            <div>
+                                                <h6 className="font-bold text-sm">
+                                                    {group.module}
+                                                </h6>
+                                                <span className="text-xs text-gray-400">
+                                                    {groupKeys.filter((k) =>
+                                                        permissions.includes(
+                                                            k,
+                                                        ),
+                                                    ).length}{' '}
+                                                    of {groupKeys.length}{' '}
+                                                    enabled
+                                                </span>
+                                            </div>
+                                            {isCollapsed ? (
+                                                <TbChevronRight className="text-gray-400 ml-auto" />
+                                            ) : (
+                                                <TbChevronDown className="text-gray-400 ml-auto" />
+                                            )}
+                                        </button>
+                                        <div className="flex items-center gap-2 ml-4">
+                                            <span className="text-xs text-gray-400">
+                                                All
                                             </span>
                                             <Switcher
-                                                checked={permissions.includes(
-                                                    perm.key,
-                                                )}
+                                                checked={allSelected}
                                                 onChange={() =>
-                                                    togglePermission(perm.key)
+                                                    toggleAllInModule(
+                                                        group,
+                                                        allSelected,
+                                                    )
+                                                }
+                                                className={
+                                                    someSelected
+                                                        ? 'opacity-70'
+                                                        : ''
                                                 }
                                             />
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Individual permission toggles */}
+                                    {!isCollapsed && (
+                                        <div className="mt-3 ml-[52px] space-y-1">
+                                            {group.permissions.map(
+                                                (perm) => (
+                                                    <div
+                                                        key={perm.key}
+                                                        className="flex items-center justify-between rounded-lg px-3 py-2 transition hover:bg-gray-50 dark:hover:bg-gray-600/50"
+                                                    >
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                                                            {perm.label}
+                                                        </span>
+                                                        <Switcher
+                                                            checked={permissions.includes(
+                                                                perm.key,
+                                                            )}
+                                                            onChange={() =>
+                                                                togglePermission(
+                                                                    perm.key,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
+            </ScrollBar>
 
-                <div className="flex justify-end gap-2 pt-2">
+            {/* Footer — fixed outside scroll area */}
+            <div className="px-6 py-3 bg-gray-100 dark:bg-gray-700 rounded-bl-2xl rounded-br-2xl">
+                <div className="flex justify-end items-center gap-2">
                     <Button onClick={handleClose} disabled={isPending}>
                         Cancel
                     </Button>

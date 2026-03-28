@@ -3,12 +3,17 @@
 import { prisma } from '@/server/lib/prisma'
 import { getUserRole } from '@/server/lib/getUserRole'
 
+export interface RoleMember {
+    name: string
+}
+
 export interface RoleRow {
     id: string
     name: string
     description: string
     permissions: string[]
     memberCount: number
+    members: RoleMember[]
     isSystem: boolean
     isDefault: boolean
 }
@@ -27,6 +32,14 @@ export async function getRoles(userId: string): Promise<RoleRow[]> {
             isSystem: true,
             isDefault: true,
             _count: { select: { memberships: true } },
+            memberships: {
+                select: {
+                    profile: {
+                        select: { firstName: true, lastName: true },
+                    },
+                },
+                take: 5,
+            },
         },
         orderBy: { createdAt: 'asc' },
     })
@@ -43,12 +56,19 @@ export async function getRoles(userId: string): Promise<RoleRow[]> {
                 .map(([k]) => k)
         }
 
+        const members: RoleMember[] = r.memberships.map((m) => {
+            const first = m.profile?.firstName ?? ''
+            const last = m.profile?.lastName ?? ''
+            return { name: `${first} ${last}`.trim() || 'Unknown' }
+        })
+
         return {
             id: r.id,
             name: r.name,
             description: r.description ?? '',
             permissions: permArray,
             memberCount: r._count.memberships,
+            members,
             isSystem: r.isSystem,
             isDefault: r.isDefault,
         }
