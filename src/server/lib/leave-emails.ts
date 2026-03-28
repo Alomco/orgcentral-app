@@ -49,7 +49,7 @@ export async function sendLeaveRequestNotification(params: {
             orgId,
             status: 'ACTIVE',
             NOT: { userId: requestingUserId },
-            role: { name: { in: ['orgAdmin', 'manager', 'globalAdmin'] } },
+            role: { name: { in: ['orgAdmin', 'manager'] } },
         },
         select: { userId: true },
     })
