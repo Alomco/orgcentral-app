@@ -50,6 +50,14 @@ export const protectedRoutes: Routes = {
             pageContainerType: 'contained',
         },
     },
+    '/settings': {
+        key: 'org.settings',
+        authority: [],
+        meta: {
+            pageBackgroundType: 'plain',
+            pageContainerType: 'contained',
+        },
+    },
     '/team': {
         key: 'org.team',
         authority: [],
