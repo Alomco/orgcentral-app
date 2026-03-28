@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/server/lib/prisma'
 import { countWorkingDays } from './leaveUtils'
+import { sendLeaveRequestNotification } from '@/server/lib/leave-emails'
 
 export type DurationType = 'full_day' | 'half_day' | 'hourly'
 export type HalfDayPortion = 'first_half' | 'second_half'
@@ -151,6 +152,33 @@ export async function submitLeaveRequest(
             metadata: metadata as object,
         },
     })
+
+    // Fire-and-forget: notify managers
+    const org = await prisma.organization.findUnique({
+        where: { id: membership.orgId },
+        select: { name: true },
+    })
+    const employee = await prisma.authUser.findUnique({
+        where: { id: userId },
+        select: { name: true },
+    })
+    const policyName = (await prisma.leavePolicy.findUnique({
+        where: { id: policy.id },
+        select: { name: true },
+    }))?.name ?? 'Leave'
+
+    sendLeaveRequestNotification({
+        leaveRequestId: leaveRequest.id,
+        employeeName: employee?.name ?? 'A team member',
+        leaveType: policyName,
+        startDate: start,
+        endDate: end,
+        days: workingDays,
+        reason: reason?.trim() || null,
+        orgId: membership.orgId,
+        orgName: org?.name ?? 'your organisation',
+        requestingUserId: userId,
+    }).catch((err) => console.error('[LEAVE-EMAIL] notification failed:', err))
 
     return { success: true, id: leaveRequest.id }
 }

@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@/server/lib/prisma'
+import { sendLeaveDecisionNotification } from '@/server/lib/leave-emails'
 
 export type ApprovalAction = 'approve' | 'decline'
 
@@ -103,6 +104,38 @@ export async function approveLeaveRequest(
                 } as object,
             },
         })
+    }
+
+    // Fire-and-forget: notify the employee
+    const fullRequest = await prisma.leaveRequest.findUnique({
+        where: { id: requestId },
+        select: {
+            startDate: true,
+            endDate: true,
+            hours: true,
+            policy: { select: { name: true } },
+        },
+    })
+    const [employee, approver, org] = await Promise.all([
+        prisma.authUser.findUnique({ where: { id: request.userId }, select: { email: true, name: true } }),
+        prisma.authUser.findUnique({ where: { id: approverId }, select: { name: true } }),
+        prisma.organization.findUnique({ where: { id: approverMembership.orgId }, select: { name: true } }),
+    ])
+
+    if (employee?.email && fullRequest) {
+        const days = Math.round((Number(fullRequest.hours) / 7.5) * 2) / 2
+        sendLeaveDecisionNotification({
+            employeeEmail: employee.email,
+            employeeName: employee.name ?? 'there',
+            approverName: approver?.name ?? 'Your manager',
+            leaveType: fullRequest.policy.name,
+            startDate: fullRequest.startDate,
+            endDate: fullRequest.endDate,
+            days,
+            decision: action === 'approve' ? 'approved' : 'declined',
+            comment: note?.trim() || undefined,
+            orgName: org?.name ?? 'your organisation',
+        }).catch((err) => console.error('[LEAVE-EMAIL] decision notification failed:', err))
     }
 
     return { success: true }

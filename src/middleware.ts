@@ -21,7 +21,7 @@ export default auth((req) => {
     const isSignedIn = !!req.auth
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix)
-    const isPublicRoute = publicRoutes.includes(nextUrl.pathname) || nextUrl.pathname.startsWith('/invite/') || nextUrl.pathname.startsWith('/api/invite/')
+    const isPublicRoute = publicRoutes.includes(nextUrl.pathname) || nextUrl.pathname.startsWith('/invite/') || nextUrl.pathname.startsWith('/api/invite/') || nextUrl.pathname.startsWith('/leave/action/') || nextUrl.pathname.startsWith('/api/leave/action')
     const isAuthRoute = authRoutes.includes(nextUrl.pathname)
 
     /** Skip auth middleware for api routes */
