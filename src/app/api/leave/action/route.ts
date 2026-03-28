@@ -131,8 +131,10 @@ export async function POST(request: Request) {
         const [employee, approver, org] = await Promise.all([
             prisma.authUser.findUnique({ where: { id: leaveRequest.userId }, select: { email: true, name: true } }),
             prisma.authUser.findUnique({ where: { id: actionToken.targetUserId }, select: { name: true } }),
-            prisma.organization.findUnique({ where: { id: leaveRequest.orgId }, select: { name: true } }),
+            prisma.organization.findUnique({ where: { id: leaveRequest.orgId }, select: { name: true, settings: true } }),
         ])
+
+        const orgBrandColour = (org?.settings as Record<string, string> | null)?.brandColour || undefined
 
         const days = Math.round((Number(leaveRequest.hours) / 7.5) * 2) / 2
 
@@ -148,6 +150,7 @@ export async function POST(request: Request) {
                 decision: isApprove ? 'approved' : 'declined',
                 comment: comment || undefined,
                 orgName: org?.name ?? 'your organisation',
+                brandColour: orgBrandColour,
             }).catch((err) => console.error('[LEAVE-ACTION] notification failed:', err))
         }
 

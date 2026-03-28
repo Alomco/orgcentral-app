@@ -1,4 +1,5 @@
 import { prisma } from '@/server/lib/prisma'
+import { getBrandSettingsByOrgId } from '@/server/lib/getBrandSettings'
 import AcceptInviteForm from './_components/AcceptInviteForm'
 import Link from 'next/link'
 
@@ -13,6 +14,7 @@ export default async function InviteAcceptPage({ params }: Props) {
         where: { token },
         select: {
             token: true,
+            orgId: true,
             targetEmail: true,
             organizationName: true,
             status: true,
@@ -90,13 +92,22 @@ export default async function InviteAcceptPage({ params }: Props) {
     }
 
     const inviterName = invitation.invitedBy?.displayName ?? 'A colleague'
+    const brand = await getBrandSettingsByOrgId(invitation.orgId)
 
     return (
-        <AcceptInviteForm
-            token={token}
-            email={invitation.targetEmail}
-            orgName={invitation.organizationName}
-            inviterName={inviterName}
-        />
+        <div style={{
+            '--primary': brand.palette.primary,
+            '--primary-deep': brand.palette.primaryDeep,
+            '--primary-mild': brand.palette.primaryMild,
+            '--primary-subtle': brand.palette.primarySubtle,
+        } as React.CSSProperties}>
+            <AcceptInviteForm
+                token={token}
+                email={invitation.targetEmail}
+                orgName={invitation.organizationName}
+                inviterName={inviterName}
+                brandColour={brand.brandColour}
+            />
+        </div>
     )
 }

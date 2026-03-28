@@ -38,9 +38,9 @@ const SignIn = ({
                 />
             </div>
             <div className="mb-10">
-                <h2 className="mb-2">Welcome back!</h2>
+                <h2 className="mb-2">Welcome back</h2>
                 <p className="font-semibold heading-text">
-                    Please enter your credentials to sign in!
+                    Sign in to your workspace
                 </p>
             </div>
             {message && (

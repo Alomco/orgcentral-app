@@ -8,17 +8,19 @@ function formatDate(date: Date): string {
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function emailWrapper(body: string): string {
+function emailWrapper(body: string, options?: { orgName?: string; brandColour?: string }): string {
+    const headerColour = options?.brandColour || '#001A4E'
+    const orgName = options?.orgName || 'OrgCentral'
     return `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto;">
-    <div style="background-color: #001A4E; padding: 20px 24px; border-radius: 12px 12px 0 0;">
-        <strong style="color: #ffffff; font-size: 16px;">OrgCentral</strong>
+    <div style="background-color: ${headerColour}; padding: 20px 24px; border-radius: 12px 12px 0 0;">
+        <strong style="color: #ffffff; font-size: 16px;">${orgName}</strong>
     </div>
     <div style="background: #ffffff; border: 1px solid #E8EDEE; border-top: none; padding: 28px 24px; border-radius: 0 0 12px 12px;">
         ${body}
     </div>
     <div style="padding: 16px 24px; text-align: center;">
-        <span style="font-size: 12px; color: #a3a3a3;">OrgCentral · Management made simple</span>
+        <span style="font-size: 12px; color: #a3a3a3;">Powered by OrgCentral</span>
     </div>
 </div>`
 }
@@ -42,6 +44,10 @@ export async function sendLeaveRequestNotification(params: {
     requestingUserId: string
 }): Promise<void> {
     const { leaveRequestId, employeeName, leaveType, startDate, endDate, days, reason, orgId, orgName, requestingUserId } = params
+
+    // Resolve org brand colour for email header
+    const orgRecord = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
+    const brandColour = (orgRecord?.settings as Record<string, string> | null)?.brandColour || undefined
 
     // Find managers/admins in the org (exclude the requesting user)
     const managerMemberships = await prisma.membership.findMany({
@@ -121,7 +127,7 @@ export async function sendLeaveRequestNotification(params: {
         await sendEmail({
             to: manager.email,
             subject: `${employeeName} has requested ${daysLabel} off — ${orgName}`,
-            html: emailWrapper(body),
+            html: emailWrapper(body, { orgName, brandColour }),
         })
     }
 }
@@ -139,8 +145,9 @@ export async function sendLeaveDecisionNotification(params: {
     decision: 'approved' | 'declined'
     comment?: string
     orgName: string
+    brandColour?: string
 }): Promise<void> {
-    const { employeeEmail, employeeName, approverName, leaveType, startDate, endDate, days, decision, comment, orgName } = params
+    const { employeeEmail, employeeName, approverName, leaveType, startDate, endDate, days, decision, comment, orgName, brandColour } = params
 
     const daysLabel = `${days} day${days !== 1 ? 's' : ''}`
     const dateRange = startDate.getTime() === endDate.getTime()
@@ -179,6 +186,6 @@ export async function sendLeaveDecisionNotification(params: {
         subject: isApproved
             ? `Your ${leaveType.toLowerCase()} has been approved — ${orgName}`
             : `Your ${leaveType.toLowerCase()} request was declined — ${orgName}`,
-        html: emailWrapper(body),
+        html: emailWrapper(body, { orgName, brandColour }),
     })
 }

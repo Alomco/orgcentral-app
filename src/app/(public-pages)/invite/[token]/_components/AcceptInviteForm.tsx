@@ -8,6 +8,7 @@ interface AcceptInviteFormProps {
     email: string
     orgName: string
     inviterName: string
+    brandColour?: string
 }
 
 export default function AcceptInviteForm({
@@ -15,6 +16,7 @@ export default function AcceptInviteForm({
     email,
     orgName,
     inviterName,
+    brandColour,
 }: AcceptInviteFormProps) {
     const router = useRouter()
     const [isPending, setIsPending] = useState(false)
@@ -80,8 +82,8 @@ export default function AcceptInviteForm({
         <div className="orgcentral-brand flex min-h-screen items-center justify-center bg-gray-50 p-4">
             <div className="w-full max-w-md">
                 <div className="mb-6 text-center">
-                    <div className="text-lg font-bold" style={{ color: '#0066CC' }}>
-                        OrgCentral
+                    <div className="text-lg font-bold" style={{ color: brandColour || '#0066CC' }}>
+                        {orgName}
                     </div>
                 </div>
 

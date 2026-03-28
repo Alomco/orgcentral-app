@@ -1,6 +1,5 @@
 import Container from '@/components/shared/Container'
 import classNames from '@/utils/classNames'
-import { APP_NAME } from '@/constants/app.constant'
 import { PAGE_CONTAINER_GUTTER_X } from '@/constants/theme.constant'
 import Link from 'next/link'
 
@@ -14,26 +13,23 @@ type FooterProps = {
 const FooterContent = () => {
     return (
         <div className="flex items-center justify-between flex-auto w-full">
-            <span>
-                Copyright &copy; {`${new Date().getFullYear()}`}{' '}
-                <span className="font-semibold">{`${APP_NAME}`}</span> All
-                rights reserved.
+            <span className="text-xs text-gray-400">
+                Powered by OrgCentral
             </span>
-            <div className="">
+            <div className="flex gap-3 text-xs text-gray-400">
                 <Link
-                    className="text-gray"
+                    className="hover:text-gray-600"
                     href="/#"
                     onClick={(e) => e.preventDefault()}
                 >
-                    Term & Conditions
+                    Terms
                 </Link>
-                <span className="mx-2 text-muted"> | </span>
                 <Link
-                    className="text-gray"
+                    className="hover:text-gray-600"
                     href="/#"
                     onClick={(e) => e.preventDefault()}
                 >
-                    Privacy & Policy
+                    Privacy
                 </Link>
             </div>
         </div>
