@@ -13,6 +13,7 @@ import type {
 const SignInClient = () => {
     const searchParams = useSearchParams()
     const callbackUrl = searchParams.get(REDIRECT_URL_KEY)
+    const isInvited = searchParams.get('invited') === 'true'
 
     const handleSignIn = ({
         values,
@@ -38,7 +39,16 @@ const SignInClient = () => {
         }
     }
 
-    return <SignIn onSignIn={handleSignIn} onOauthSignIn={handleOAuthSignIn} />
+    return (
+        <>
+            {isInvited && (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
+                    Your account is ready! Sign in to get started.
+                </div>
+            )}
+            <SignIn onSignIn={handleSignIn} onOauthSignIn={handleOAuthSignIn} />
+        </>
+    )
 }
 
 export default SignInClient

@@ -57,6 +57,37 @@ const navigationConfig: NavigationTree[] = [
             },
         ],
     },
+    {
+        key: 'org',
+        path: '',
+        title: 'Organisation',
+        translateKey: 'nav.org',
+        icon: 'collapseMenu',
+        type: NAV_ITEM_TYPE_COLLAPSE,
+        authority: [],
+        subMenu: [
+            {
+                key: 'org.team',
+                path: '/team',
+                title: 'Team',
+                translateKey: 'nav.org.team',
+                icon: '',
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [],
+                subMenu: [],
+            },
+            {
+                key: 'org.settings',
+                path: '/settings',
+                title: 'Settings',
+                translateKey: 'nav.org.settings',
+                icon: '',
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [],
+                subMenu: [],
+            },
+        ],
+    },
 ]
 
 export default navigationConfig

@@ -34,6 +34,14 @@ export const protectedRoutes: Routes = {
             pageContainerType: 'contained',
         },
     },
+    '/team': {
+        key: 'org.team',
+        authority: [],
+        meta: {
+            pageBackgroundType: 'plain',
+            pageContainerType: 'contained',
+        },
+    },
 }
 
 export const publicRoutes: Routes = {
